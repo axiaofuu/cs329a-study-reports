@@ -20,3 +20,5 @@ data/raw/
 data/papers/
 tmp/
 .cache/
+artifacts/
+codebase-manifest.json

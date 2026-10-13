@@ -4,6 +4,7 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const srcDir = path.join(root, 'src');
 const distDir = path.join(root, 'dist');
+const config = JSON.parse(fs.readFileSync(path.join(root, 'report.config.json'), 'utf8'));
 
 const escapeHtml = (value) => String(value)
   .replaceAll('&', '&amp;')
@@ -17,8 +18,9 @@ const seconds = (stamp) => {
 };
 
 const shortTime = (stamp) => stamp.startsWith('00:') ? stamp.slice(3, 8) : stamp.slice(0, 8);
+const videoTimeUrl = (seconds) => `${config.videoUrl}${config.videoUrl.includes('?') ? '&' : '?'}t=${seconds}s`;
 
-const cues = JSON.parse(fs.readFileSync(path.join(root, 'data', 'part2-transcript.json'), 'utf8'));
+const cues = JSON.parse(fs.readFileSync(path.join(root, config.transcriptFile), 'utf8'));
 const groups = new Map();
 for (const cue of cues) {
   const minute = Math.floor(seconds(cue.start) / 60);
@@ -31,7 +33,7 @@ const transcriptHtml = [...groups.entries()].map(([, minuteCues]) => {
   const text = minuteCues.map((cue) => cue.text).join(' ');
   const hrefSeconds = Math.floor(seconds(first.start));
   return `<article class="transcript-block" data-search="${escapeHtml(text.toLowerCase())}">\n` +
-    `  <a class="transcript-time" href="https://www.youtube.com/watch?v=-Ggc37xLj_Y&t=${hrefSeconds}s">${shortTime(first.start)}</a>\n` +
+    `  <a class="transcript-time" href="${videoTimeUrl(hrefSeconds)}">${shortTime(first.start)}</a>\n` +
     `  <div class="transcript-text">${escapeHtml(text)}</div>\n` +
     `</article>`;
 }).join('\n');
@@ -46,7 +48,7 @@ html = html
   .replace('{{TRANSCRIPT}}', transcriptHtml)
   .replace('{{GENERATED_AT}}', new Intl.DateTimeFormat('zh-CN', {
     dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Shanghai'
-  }).format(new Date()));
+  }).format(new Date(config.generatedAt)));
 
 html = html.replace(/src="\.\.\/assets\/slides\/([^"]+\.jpg)"/g, (_, filename) => {
   const image = fs.readFileSync(path.join(root, 'assets', 'slides', filename)).toString('base64');

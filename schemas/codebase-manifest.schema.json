@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/codebase-manifest.schema.json",
+  "title": "Codebase manifest",
+  "type": "object",
+  "required": ["schemaVersion", "project", "summary", "entrypoints", "modules", "files", "dependencyEdges"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "project": {
+      "type": "object",
+      "required": ["name", "root", "manifests"],
+      "properties": {
+        "name": { "type": "string" },
+        "root": { "const": "." },
+        "manifests": { "type": "array", "items": { "type": "string" } },
+        "commands": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "summary": { "type": "object" },
+    "entrypoints": { "type": "array" },
+    "modules": { "type": "array" },
+    "files": { "type": "array" },
+    "dependencyEdges": { "type": "array" },
+    "skippedSensitiveFiles": { "type": "integer", "minimum": 0 }
+  }
+}

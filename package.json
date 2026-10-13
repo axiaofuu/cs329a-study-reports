@@ -1,13 +1,15 @@
 {
   "name": "cs329a-study-reports",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Paper-grounded Chinese HTML study reports for Stanford CS329A lectures.",
+  "description": "Evidence-grounded HTML study reports for courses and codebases.",
   "license": "MIT",
   "scripts": {
     "build:part2": "node reports/part2/scripts/build-report.mjs",
     "lint:part2": "node tools/lint-report.mjs reports/part2/src/index.html",
+    "scan:codebase": "node tools/scan-codebase.mjs",
+    "test:scanner": "node tools/scan-codebase.mjs . .cache/self-manifest.json",
     "privacy": "node tools/privacy-scan.mjs .",
-    "test": "npm run build:part2 && npm run lint:part2 && npm run privacy"
+    "test": "npm run build:part2 && npm run lint:part2 && npm run test:scanner && npm run privacy"
   }
 }
