@@ -1,0 +1,242 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1000" viewBox="0 0 1920 1000" role="img" aria-labelledby="title desc">
+  <title id="title">CS329A Course Report Generation Pipeline</title>
+  <desc id="desc">Official course sources are audited, extracted, aligned, rewritten for teaching, built into a standalone HTML report, and validated.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#14202e" flood-opacity="0.09"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#65707d"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#8c1515"/>
+    </marker>
+    <style>
+      .title { font: 700 44px Georgia, 'Noto Serif SC', serif; fill: #14202e; }
+      .subtitle { font: 400 21px Inter, 'Noto Sans SC', sans-serif; fill: #5f6873; }
+      .stage { font: 700 14px Inter, 'Noto Sans SC', sans-serif; letter-spacing: 1.4px; fill: #8c1515; }
+      .head { font: 700 25px Inter, 'Noto Sans SC', sans-serif; fill: #14202e; }
+      .body { font: 400 17px Inter, 'Noto Sans SC', sans-serif; fill: #394654; }
+      .small { font: 400 15px Inter, 'Noto Sans SC', sans-serif; fill: #5f6873; }
+      .label { font: 700 13px Inter, 'Noto Sans SC', sans-serif; letter-spacing: .8px; fill: #6f7882; }
+      .mono { font: 600 15px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #243444; }
+      .white-head { font: 700 24px Inter, 'Noto Sans SC', sans-serif; fill: #ffffff; }
+      .white-body { font: 400 16px Inter, 'Noto Sans SC', sans-serif; fill: #e9eef3; }
+      .connector { fill: none; stroke: #65707d; stroke-width: 3; marker-end: url(#arrow); }
+      .feedback { fill: none; stroke: #8c1515; stroke-width: 3; stroke-dasharray: 10 9; marker-end: url(#arrow-red); }
+      .thin { fill: none; stroke: #aeb7bf; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1000" fill="#f8f4ec"/>
+  <path d="M0 0 H1920 V126 C1580 72 1295 172 995 112 C690 51 393 144 0 83 Z" fill="#8c1515" opacity="0.045"/>
+  <circle cx="1770" cy="42" r="150" fill="none" stroke="#8c1515" stroke-width="38" opacity="0.045"/>
+
+  <text x="56" y="68" class="title">CS329A Course Report Generation Pipeline</text>
+  <text x="56" y="108" class="subtitle">课程官网、视频、字幕与论文，如何变成可检索、可验证、能读懂的独立 HTML 学习报告</text>
+  <rect x="1643" y="48" width="221" height="42" rx="21" fill="#14202e"/>
+  <text x="1753" y="75" text-anchor="middle" class="white-body">ONE REPORT PER LECTURE</text>
+
+  <!-- Main stage containers -->
+  <g filter="url(#shadow)">
+    <rect x="44" y="174" width="216" height="588" rx="22" fill="#e8f1f8" stroke="#c7d9e7"/>
+    <rect x="294" y="174" width="228" height="588" rx="22" fill="#f6ead7" stroke="#e3cda9"/>
+    <rect x="556" y="174" width="274" height="588" rx="22" fill="#f3ecdf" stroke="#ddd2bf"/>
+    <rect x="864" y="174" width="274" height="588" rx="22" fill="#eee9f7" stroke="#d4c9e7"/>
+    <rect x="1172" y="174" width="288" height="588" rx="22" fill="#f7e6e4" stroke="#e6c3bf"/>
+    <rect x="1494" y="174" width="210" height="588" rx="22" fill="#e7f2ec" stroke="#c5ddcf"/>
+    <rect x="1738" y="174" width="138" height="588" rx="22" fill="#142536" stroke="#142536"/>
+  </g>
+
+  <!-- Stage 0: inputs -->
+  <text x="66" y="210" class="stage">INPUTS</text>
+  <text x="66" y="246" class="head">课程原始材料</text>
+  <g>
+    <rect x="66" y="282" width="172" height="80" rx="14" fill="#ffffff" stroke="#c7d9e7"/>
+    <circle cx="91" cy="307" r="12" fill="#377da6"/>
+    <text x="113" y="313" class="body" font-weight="700">课程官网</text>
+    <text x="84" y="340" class="small">版本 · 日期 · 阅读清单</text>
+
+    <rect x="66" y="382" width="172" height="96" rx="14" fill="#ffffff" stroke="#c7d9e7"/>
+    <circle cx="91" cy="407" r="12" fill="#377da6"/>
+    <text x="113" y="413" class="body" font-weight="700">视频与字幕</text>
+    <text x="84" y="440" class="small">讲课内容 · 时间戳</text>
+    <text x="84" y="461" class="small">画面中的投影片</text>
+
+    <rect x="66" y="498" width="172" height="80" rx="14" fill="#ffffff" stroke="#c7d9e7"/>
+    <circle cx="91" cy="523" r="12" fill="#377da6"/>
+    <text x="113" y="529" class="body" font-weight="700">讲义 / 论文</text>
+    <text x="84" y="556" class="small">公式 · 图表 · 实验结果</text>
+
+    <rect x="66" y="604" width="172" height="112" rx="14" fill="#d9e8f3" stroke="#b4cddd"/>
+    <text x="84" y="633" class="label">RAW INPUT</text>
+    <text x="84" y="660" class="mono">HTML / MP4 / VTT</text>
+    <text x="84" y="685" class="mono">PDF / metadata</text>
+  </g>
+
+  <!-- Stage 1: audit -->
+  <text x="316" y="210" class="stage">01 · SOURCE AUDIT</text>
+  <text x="316" y="246" class="head">材料核验</text>
+  <text x="316" y="278" class="small">输入：官网与原始材料</text>
+  <g>
+    <rect x="316" y="306" width="184" height="58" rx="12" fill="#fffaf2" stroke="#e3cda9"/>
+    <text x="335" y="341" class="body">课程与视频对应关系</text>
+    <rect x="316" y="382" width="184" height="58" rx="12" fill="#fffaf2" stroke="#e3cda9"/>
+    <text x="335" y="417" class="body">年份与论文版本</text>
+    <rect x="316" y="458" width="184" height="76" rx="12" fill="#fffaf2" stroke="#e3cda9"/>
+    <text x="335" y="487" class="body">PPT 是否存在</text>
+    <text x="335" y="512" class="small">缺失时使用论文补充</text>
+  </g>
+  <rect x="316" y="604" width="184" height="112" rx="14" fill="#ead6b7" stroke="#d4b887"/>
+  <text x="335" y="633" class="label">OUTPUT</text>
+  <text x="335" y="660" class="mono">course-manifest</text>
+  <text x="335" y="685" class="small">可信来源与版本清单</text>
+
+  <!-- Stage 2: extract -->
+  <text x="578" y="210" class="stage">02 · EXTRACTION</text>
+  <text x="578" y="246" class="head">并行提取</text>
+  <text x="578" y="278" class="small">输入：manifest + 原始文件</text>
+  <g>
+    <rect x="578" y="306" width="230" height="90" rx="14" fill="#fffdfa" stroke="#ddd2bf"/>
+    <rect x="578" y="306" width="8" height="90" rx="4" fill="#b9824f"/>
+    <text x="603" y="337" class="body" font-weight="700">字幕清洗</text>
+    <text x="603" y="365" class="small">去重 · 分段 · 保留时间戳</text>
+
+    <rect x="578" y="414" width="230" height="90" rx="14" fill="#fffdfa" stroke="#ddd2bf"/>
+    <rect x="578" y="414" width="8" height="90" rx="4" fill="#b9824f"/>
+    <text x="603" y="445" class="body" font-weight="700">投影片恢复</text>
+    <text x="603" y="473" class="small">场景检测 · 截图 · 页码</text>
+
+    <rect x="578" y="522" width="230" height="90" rx="14" fill="#fffdfa" stroke="#ddd2bf"/>
+    <rect x="578" y="522" width="8" height="90" rx="4" fill="#b9824f"/>
+    <text x="603" y="553" class="body" font-weight="700">论文解析</text>
+    <text x="603" y="581" class="small">公式 · 图号 · 数字 · 限制</text>
+  </g>
+  <rect x="578" y="632" width="230" height="84" rx="14" fill="#e8dfd0" stroke="#d4c7b3"/>
+  <text x="599" y="660" class="label">OUTPUT</text>
+  <text x="599" y="683" class="mono">transcript · slides</text>
+  <text x="599" y="705" class="mono">paper evidence</text>
+
+  <!-- Stage 3: alignment -->
+  <text x="886" y="210" class="stage">03 · ALIGNMENT</text>
+  <text x="886" y="246" class="head">证据对齐</text>
+  <text x="886" y="278" class="small">输入：三路提取结果</text>
+  <g>
+    <rect x="886" y="310" width="230" height="214" rx="18" fill="#ffffff" stroke="#d4c9e7"/>
+    <text x="1001" y="344" text-anchor="middle" class="label">LECTURE EVIDENCE MAP</text>
+    <circle cx="932" cy="397" r="27" fill="#dce8f2" stroke="#9db9cd"/>
+    <circle cx="1001" cy="459" r="27" fill="#eadff4" stroke="#b9a4d0"/>
+    <circle cx="1070" cy="397" r="27" fill="#f2dfcf" stroke="#d4ae8a"/>
+    <path d="M953 414 L980 441 M1022 441 L1049 414 M959 397 H1043" class="thin"/>
+    <text x="932" y="403" text-anchor="middle" class="small">时间</text>
+    <text x="1001" y="465" text-anchor="middle" class="small">页码</text>
+    <text x="1070" y="403" text-anchor="middle" class="small">论文</text>
+    <text x="1001" y="500" text-anchor="middle" class="small">逐字稿 ↔ 投影片 ↔ 论文</text>
+
+    <rect x="886" y="548" width="230" height="64" rx="12" fill="#faf7fd" stroke="#d4c9e7"/>
+    <text x="1001" y="575" text-anchor="middle" class="body">ASR 术语与数字纠错</text>
+    <text x="1001" y="598" text-anchor="middle" class="small">保留冲突版本与证据位置</text>
+  </g>
+  <rect x="886" y="632" width="230" height="84" rx="14" fill="#ddd4ed" stroke="#c5b6dc"/>
+  <text x="907" y="660" class="label">OUTPUT</text>
+  <text x="907" y="687" class="mono">evidence-map.json</text>
+
+  <!-- Stage 4: pedagogical synthesis -->
+  <text x="1194" y="210" class="stage">04 · SYNTHESIS</text>
+  <text x="1194" y="246" class="head">教学化重写</text>
+  <text x="1194" y="278" class="small">输入：evidence map + 报告规范</text>
+  <g>
+    <rect x="1194" y="306" width="244" height="70" rx="13" fill="#fffafa" stroke="#e6c3bf"/>
+    <text x="1215" y="336" class="body" font-weight="700">划分知识块</text>
+    <text x="1215" y="359" class="small">按课堂逻辑，不按论文目录</text>
+
+    <rect x="1194" y="392" width="244" height="86" rx="13" fill="#fffafa" stroke="#e6c3bf"/>
+    <text x="1215" y="423" class="body" font-weight="700">逐页解释</text>
+    <text x="1215" y="448" class="small">讲什么 · 为什么 · 前后关系</text>
+
+    <rect x="1194" y="494" width="244" height="86" rx="13" fill="#fffafa" stroke="#e6c3bf"/>
+    <text x="1215" y="525" class="body" font-weight="700">先说人话，再给术语</text>
+    <text x="1215" y="550" class="small">公式例子 · 边界 · 字幕纠错</text>
+
+    <rect x="1194" y="596" width="244" height="54" rx="13" fill="#fffafa" stroke="#e6c3bf"/>
+    <text x="1215" y="630" class="body">生成 6–10 道测试题</text>
+  </g>
+  <rect x="1194" y="666" width="244" height="50" rx="14" fill="#ebcdca" stroke="#dba9a4"/>
+  <text x="1215" y="696" class="mono">structured report content</text>
+
+  <!-- Stage 5: build and QA -->
+  <text x="1516" y="210" class="stage">05 · BUILD &amp; QA</text>
+  <text x="1516" y="246" class="head">构建与门禁</text>
+  <text x="1516" y="278" class="small">输入：正文 + 图片 + 逐字稿</text>
+  <g>
+    <rect x="1516" y="310" width="166" height="98" rx="14" fill="#ffffff" stroke="#c5ddcf"/>
+    <text x="1599" y="341" text-anchor="middle" class="body" font-weight="700">HTML 构建</text>
+    <text x="1599" y="369" text-anchor="middle" class="small">内联 CSS / JS</text>
+    <text x="1599" y="391" text-anchor="middle" class="small">图片与逐字稿</text>
+
+    <rect x="1516" y="430" width="166" height="156" rx="14" fill="#ffffff" stroke="#c5ddcf"/>
+    <text x="1599" y="462" text-anchor="middle" class="body" font-weight="700">自动检查</text>
+    <text x="1535" y="493" class="small">✓ 事实与本地链接</text>
+    <text x="1535" y="519" class="small">✓ 通俗语言与公式</text>
+    <text x="1535" y="545" class="small">✓ 无答案泄漏</text>
+    <text x="1535" y="571" class="small">✓ 结构完整</text>
+
+    <rect x="1516" y="606" width="166" height="110" rx="14" fill="#d7e9df" stroke="#aecfbc"/>
+    <text x="1599" y="637" text-anchor="middle" class="body" font-weight="700">浏览器检查</text>
+    <text x="1599" y="665" text-anchor="middle" class="small">桌面 + 390px</text>
+    <text x="1599" y="689" text-anchor="middle" class="small">搜索 + 测试交互</text>
+  </g>
+
+  <!-- Stage 6: output -->
+  <text x="1758" y="210" class="stage" fill="#e5bec0">OUTPUT</text>
+  <text x="1758" y="249" class="white-head">每节课</text>
+  <text x="1758" y="279" class="white-head">一份报告</text>
+  <g>
+    <rect x="1758" y="318" width="98" height="118" rx="12" fill="#ffffff"/>
+    <rect x="1772" y="336" width="70" height="10" rx="5" fill="#8c1515"/>
+    <rect x="1772" y="360" width="54" height="7" rx="3.5" fill="#c9d0d7"/>
+    <rect x="1772" y="377" width="70" height="7" rx="3.5" fill="#c9d0d7"/>
+    <rect x="1772" y="398" width="32" height="22" rx="5" fill="#f0dfdd"/>
+    <rect x="1810" y="398" width="32" height="22" rx="5" fill="#dce8f2"/>
+  </g>
+  <text x="1807" y="473" text-anchor="middle" class="white-body" font-size="14">自包含 HTML</text>
+  <text x="1807" y="500" text-anchor="middle" class="white-body" font-size="14">可搜索逐字稿</text>
+  <text x="1807" y="527" text-anchor="middle" class="white-body" font-size="14">论文与页码证据</text>
+  <text x="1807" y="554" text-anchor="middle" class="white-body" font-size="14">交互测试题</text>
+  <rect x="1758" y="604" width="98" height="84" rx="12" fill="#22394c" stroke="#466078"/>
+  <text x="1807" y="634" text-anchor="middle" class="white-body">dist/</text>
+  <text x="1807" y="661" text-anchor="middle" class="mono" fill="#ffffff">index.html</text>
+
+  <!-- Main flow arrows -->
+  <path d="M260 468 H286" class="connector"/>
+  <path d="M522 468 H548" class="connector"/>
+  <path d="M830 468 H856" class="connector"/>
+  <path d="M1138 468 H1164" class="connector"/>
+  <path d="M1460 468 H1486" class="connector"/>
+  <path d="M1704 468 H1730" class="connector"/>
+
+  <!-- Standards layer -->
+  <rect x="294" y="822" width="1410" height="120" rx="22" fill="#ffffff" stroke="#d8d1c5" filter="url(#shadow)"/>
+  <text x="322" y="856" class="stage">CONTROL LAYER · REUSABLE ACROSS ALL PARTS</text>
+  <text x="322" y="892" class="head">统一规范层</text>
+  <rect x="504" y="850" width="222" height="60" rx="14" fill="#f5f1ea" stroke="#d8d1c5"/>
+  <text x="615" y="876" text-anchor="middle" class="mono">AGENTS.md</text>
+  <text x="615" y="898" text-anchor="middle" class="small">执行流程与交付门槛</text>
+  <rect x="748" y="850" width="252" height="60" rx="14" fill="#f5f1ea" stroke="#d8d1c5"/>
+  <text x="874" y="876" text-anchor="middle" class="mono">STYLE_GUIDE.md</text>
+  <text x="874" y="898" text-anchor="middle" class="small">通俗化与证据规则</text>
+  <rect x="1022" y="850" width="270" height="60" rx="14" fill="#f5f1ea" stroke="#d8d1c5"/>
+  <text x="1157" y="876" text-anchor="middle" class="mono">CONTENT_TEMPLATE.md</text>
+  <text x="1157" y="898" text-anchor="middle" class="small">固定信息结构</text>
+  <rect x="1314" y="850" width="256" height="60" rx="14" fill="#f5f1ea" stroke="#d8d1c5"/>
+  <text x="1442" y="876" text-anchor="middle" class="mono">lint-report.mjs</text>
+  <text x="1442" y="898" text-anchor="middle" class="small">自动质量检查</text>
+  <path d="M1157 850 V790 H1316 V770" class="thin" stroke-dasharray="7 6"/>
+  <path d="M1442 850 V790 H1599 V770" class="thin" stroke-dasharray="7 6"/>
+
+  <!-- Feedback loop -->
+  <path d="M1599 596 C1599 786 1334 795 1300 729" class="feedback"/>
+  <text x="1438" y="784" text-anchor="middle" class="small" fill="#8c1515">检查失败 → 返回重写</text>
+
+  <text x="56" y="976" class="small">Figure 1 · Traceable evidence in, readable and validated learning report out.</text>
+</svg>

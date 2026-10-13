@@ -1,0 +1,5407 @@
+[
+  {
+    "start": "00:00:05.520",
+    "end": "00:00:09.680",
+    "text": "So today, we are going to talk about inference scaling."
+  },
+  {
+    "start": "00:00:09.680",
+    "end": "00:00:13.100",
+    "text": "We briefly hinted on this in the first lecture,"
+  },
+  {
+    "start": "00:00:13.100",
+    "end": "00:00:17.600",
+    "text": "so there are three stages for LLM kind of development."
+  },
+  {
+    "start": "00:00:17.600",
+    "end": "00:00:19.140",
+    "text": "The first one is pre-training."
+  },
+  {
+    "start": "00:00:19.140",
+    "end": "00:00:22.860",
+    "text": "This stage is historically takes a lot more time."
+  },
+  {
+    "start": "00:00:22.860",
+    "end": "00:00:24.780",
+    "text": "It could take several months."
+  },
+  {
+    "start": "00:00:24.780",
+    "end": "00:00:30.880",
+    "text": "A whole lot of GPUs that are used for training these."
+  },
+  {
+    "start": "00:00:30.880",
+    "end": "00:00:32.780",
+    "text": "And then there's the fine tuning step."
+  },
+  {
+    "start": "00:00:32.780",
+    "end": "00:00:36.120",
+    "text": "Usually, this is a less, or historically has been"
+  },
+  {
+    "start": "00:00:36.120",
+    "end": "00:00:39.020",
+    "text": "a less compute-intense process."
+  },
+  {
+    "start": "00:00:39.020",
+    "end": "00:00:41.640",
+    "text": "If you are talking about trillions"
+  },
+  {
+    "start": "00:00:41.640",
+    "end": "00:00:45.020",
+    "text": "of data, tokens in the pre-training side,"
+  },
+  {
+    "start": "00:00:45.020",
+    "end": "00:00:48.560",
+    "text": "on the fine tuning side, this is orders of magnitude less data"
+  },
+  {
+    "start": "00:00:48.560",
+    "end": "00:00:50.100",
+    "text": "that we use for fine tuning."
+  },
+  {
+    "start": "00:00:50.100",
+    "end": "00:00:52.160",
+    "text": "And then there is the inference part,"
+  },
+  {
+    "start": "00:00:52.160",
+    "end": "00:00:54.600",
+    "text": "where we get to use the model."
+  },
+  {
+    "start": "00:00:54.600",
+    "end": "00:00:58.280",
+    "text": "And we are going to see different ways"
+  },
+  {
+    "start": "00:00:58.280",
+    "end": "00:01:00.120",
+    "text": "that at inference time, we can make"
+  },
+  {
+    "start": "00:01:00.120",
+    "end": "00:01:05.720",
+    "text": "the model be better and become more useful without changing"
+  },
+  {
+    "start": "00:01:05.720",
+    "end": "00:01:10.000",
+    "text": "the parameters of the model and without any fine tuning"
+  },
+  {
+    "start": "00:01:10.000",
+    "end": "00:01:11.960",
+    "text": "of the models."
+  },
+  {
+    "start": "00:01:11.960",
+    "end": "00:01:16.740",
+    "text": "So let's first start with the Large Language Monkeys paper."
+  },
+  {
+    "start": "00:01:16.740",
+    "end": "00:01:20.480",
+    "text": "Again, you are familiar with the infinite monkey theorem by now"
+  },
+  {
+    "start": "00:01:20.480",
+    "end": "00:01:24.760",
+    "text": "because we discussed it on Monday."
+  },
+  {
+    "start": "00:01:24.760",
+    "end": "00:01:29.520",
+    "text": "But to recap, the idea of this paper is that we have an LLM"
+  },
+  {
+    "start": "00:01:29.520",
+    "end": "00:01:31.920",
+    "text": "and we have a problem as input."
+  },
+  {
+    "start": "00:01:31.920",
+    "end": "00:01:35.200",
+    "text": "Instead of generating the response for this problem"
+  },
+  {
+    "start": "00:01:35.200",
+    "end": "00:01:39.440",
+    "text": "only once, we are going to repeatedly ask the same input"
+  },
+  {
+    "start": "00:01:39.440",
+    "end": "00:01:41.520",
+    "text": "problem again and again."
+  },
+  {
+    "start": "00:01:41.520",
+    "end": "00:01:43.040",
+    "text": "This could be a number of times, it"
+  },
+  {
+    "start": "00:01:43.040",
+    "end": "00:01:45.880",
+    "text": "could be 10 times, 100 times, and so on,"
+  },
+  {
+    "start": "00:01:45.880",
+    "end": "00:01:48.420",
+    "text": "and we will see how that affects the performance."
+  },
+  {
+    "start": "00:01:48.420",
+    "end": "00:01:51.400",
+    "text": "And then we are going to have a verifier that can tell us"
+  },
+  {
+    "start": "00:01:51.400",
+    "end": "00:01:55.800",
+    "text": "which one of these responses were the correct response,"
+  },
+  {
+    "start": "00:01:55.800",
+    "end": "00:02:01.550",
+    "text": "and then that is going to be the output of this system."
+  },
+  {
+    "start": "00:02:01.550",
+    "end": "00:02:06.130",
+    "text": "The reason we like that is that by doing this repeated sampling,"
+  },
+  {
+    "start": "00:02:06.130",
+    "end": "00:02:08.910",
+    "text": "we can make models that are inferior."
+  },
+  {
+    "start": "00:02:08.910",
+    "end": "00:02:16.390",
+    "text": "For example, a Llama 3-8b or 70b that is not as capable as GPT-4o"
+  },
+  {
+    "start": "00:02:16.390",
+    "end": "00:02:17.690",
+    "text": "with single attempt."
+  },
+  {
+    "start": "00:02:17.690",
+    "end": "00:02:20.070",
+    "text": "But by doing this repeated sampling"
+  },
+  {
+    "start": "00:02:20.070",
+    "end": "00:02:25.370",
+    "text": "and selecting the correct one among the generated candidates,"
+  },
+  {
+    "start": "00:02:25.370",
+    "end": "00:02:29.350",
+    "text": "we can significantly improve the performance"
+  },
+  {
+    "start": "00:02:29.350",
+    "end": "00:02:31.710",
+    "text": "of these inferior models and make them better"
+  },
+  {
+    "start": "00:02:31.710",
+    "end": "00:02:35.790",
+    "text": "than these larger and proprietary ones."
+  },
+  {
+    "start": "00:02:35.790",
+    "end": "00:02:38.190",
+    "text": "And these are-- here you can see examples"
+  },
+  {
+    "start": "00:02:38.190",
+    "end": "00:02:44.510",
+    "text": "across a really hard math coding and different styles of math"
+  },
+  {
+    "start": "00:02:44.510",
+    "end": "00:02:49.150",
+    "text": "problem question answering problems."
+  },
+  {
+    "start": "00:02:49.150",
+    "end": "00:02:52.750",
+    "text": "Is this clear to everyone?"
+  },
+  {
+    "start": "00:02:52.750",
+    "end": "00:02:56.310",
+    "text": "It just seems like the models and smaller models already"
+  },
+  {
+    "start": "00:02:56.310",
+    "end": "00:02:58.690",
+    "text": "know the answers to these hard problems,"
+  },
+  {
+    "start": "00:02:58.690",
+    "end": "00:03:01.250",
+    "text": "and just by doing this repeated sampling,"
+  },
+  {
+    "start": "00:03:01.250",
+    "end": "00:03:06.470",
+    "text": "we are eliciting and surfacing those answers."
+  },
+  {
+    "start": "00:03:06.470",
+    "end": "00:03:13.070",
+    "text": "It's just they just don't tell us that in the first trial."
+  },
+  {
+    "start": "00:03:13.070",
+    "end": "00:03:19.430",
+    "text": "Now, this paradigm of repeated sampling,"
+  },
+  {
+    "start": "00:03:19.430",
+    "end": "00:03:21.710",
+    "text": "works well across pretty much any domain"
+  },
+  {
+    "start": "00:03:21.710",
+    "end": "00:03:26.350",
+    "text": "that we have tried in so far, including agentic benchmarks"
+  },
+  {
+    "start": "00:03:26.350",
+    "end": "00:03:30.830",
+    "text": "such as SWE-bench, which mimics how a software engineer goes"
+  },
+  {
+    "start": "00:03:30.830",
+    "end": "00:03:36.310",
+    "text": "about editing code and creating new patches."
+  },
+  {
+    "start": "00:03:36.310",
+    "end": "00:03:38.450",
+    "text": "So here, we are seeing the coverage,"
+  },
+  {
+    "start": "00:03:38.450",
+    "end": "00:03:43.510",
+    "text": "meaning the fraction of problems that"
+  },
+  {
+    "start": "00:03:43.510",
+    "end": "00:03:46.330",
+    "text": "are solved by, at least, one of the samples."
+  },
+  {
+    "start": "00:03:46.330",
+    "end": "00:03:49.710",
+    "text": "And here on the x-axis, we have the number of samples going from"
+  },
+  {
+    "start": "00:03:49.710",
+    "end": "00:03:51.870",
+    "text": "1 to 1,000."
+  },
+  {
+    "start": "00:03:51.870",
+    "end": "00:03:57.900",
+    "text": "And what we are seeing here is that a models such as DeepSeek"
+  },
+  {
+    "start": "00:03:57.900",
+    "end": "00:04:00.260",
+    "text": "can--"
+  },
+  {
+    "start": "00:04:00.260",
+    "end": "00:04:05.180",
+    "text": "I believe this was the DeepSeek-V3 model can outperform"
+  },
+  {
+    "start": "00:04:05.180",
+    "end": "00:04:12.140",
+    "text": "models such as Claude 3.5 or o1 preview after 1,000 samples."
+  },
+  {
+    "start": "00:04:12.140",
+    "end": "00:04:14.620",
+    "text": "It can solve more coding and software engineering"
+  },
+  {
+    "start": "00:04:14.620",
+    "end": "00:04:16.360",
+    "text": "problems than those."
+  },
+  {
+    "start": "00:04:16.360",
+    "end": "00:04:17.820",
+    "text": "And the reason this is interesting"
+  },
+  {
+    "start": "00:04:17.820",
+    "end": "00:04:20.940",
+    "text": "is that, we are doing--"
+  },
+  {
+    "start": "00:04:20.940",
+    "end": "00:04:23.360",
+    "text": "in this case for coding problems,"
+  },
+  {
+    "start": "00:04:23.360",
+    "end": "00:04:26.180",
+    "text": "if we have unit tests that we can"
+  },
+  {
+    "start": "00:04:26.180",
+    "end": "00:04:29.940",
+    "text": "use to select which one of these samples is correct, then"
+  },
+  {
+    "start": "00:04:29.940",
+    "end": "00:04:32.260",
+    "text": "we have an end-to-end automated way"
+  },
+  {
+    "start": "00:04:32.260",
+    "end": "00:04:37.240",
+    "text": "to create a more capable model, in this case,"
+  },
+  {
+    "start": "00:04:37.240",
+    "end": "00:04:39.480",
+    "text": "out of DeepSeek and open-source model."
+  },
+  {
+    "start": "00:04:44.820",
+    "end": "00:04:49.940",
+    "text": "Now, again, we saw pre-training scaling laws in the last class,"
+  },
+  {
+    "start": "00:04:49.940",
+    "end": "00:04:56.220",
+    "text": "and that was, we can predictably reduce the test laws given"
+  },
+  {
+    "start": "00:04:56.220",
+    "end": "00:04:58.360",
+    "text": "these equations in this paper."
+  },
+  {
+    "start": "00:04:58.360",
+    "end": "00:05:01.440",
+    "text": "And these equations might change given the setup,"
+  },
+  {
+    "start": "00:05:01.440",
+    "end": "00:05:06.260",
+    "text": "but there is a predictable path to increase data, amount"
+  },
+  {
+    "start": "00:05:06.260",
+    "end": "00:05:08.500",
+    "text": "of compute use, and the number of parameters"
+  },
+  {
+    "start": "00:05:08.500",
+    "end": "00:05:14.820",
+    "text": "in the model and use that to predict, or reduce the test"
+  },
+  {
+    "start": "00:05:14.820",
+    "end": "00:05:15.440",
+    "text": "laws."
+  },
+  {
+    "start": "00:05:15.440",
+    "end": "00:05:18.140",
+    "text": "So this is for pre-training, but it turns out,"
+  },
+  {
+    "start": "00:05:18.140",
+    "end": "00:05:22.380",
+    "text": "we can define a similar scaling laws, but this time"
+  },
+  {
+    "start": "00:05:22.380",
+    "end": "00:05:25.500",
+    "text": "for inference, or test time compute,"
+  },
+  {
+    "start": "00:05:25.500",
+    "end": "00:05:27.960",
+    "text": "and that is something that we showed in this paper."
+  },
+  {
+    "start": "00:05:27.960",
+    "end": "00:05:30.660",
+    "text": "Basically, we're showing that the relationship"
+  },
+  {
+    "start": "00:05:30.660",
+    "end": "00:05:34.060",
+    "text": "between coverage and the number of samples"
+  },
+  {
+    "start": "00:05:34.060",
+    "end": "00:05:37.420",
+    "text": "that are being drawn in parallel from the model"
+  },
+  {
+    "start": "00:05:37.420",
+    "end": "00:05:39.940",
+    "text": "follow an exponential power law."
+  },
+  {
+    "start": "00:05:39.940",
+    "end": "00:05:42.060",
+    "text": "So assume this says, coverage, meaning"
+  },
+  {
+    "start": "00:05:42.060",
+    "end": "00:05:46.240",
+    "text": "how many problems are solved by, at least, one of the samples,"
+  },
+  {
+    "start": "00:05:46.240",
+    "end": "00:05:48.800",
+    "text": "and then k is the number of samples."
+  },
+  {
+    "start": "00:05:48.800",
+    "end": "00:05:51.340",
+    "text": "And a and b are these kind of coefficients"
+  },
+  {
+    "start": "00:05:51.340",
+    "end": "00:05:55.500",
+    "text": "that we can find through the curve-fitting parameters"
+  },
+  {
+    "start": "00:05:55.500",
+    "end": "00:06:03.220",
+    "text": "that we can find through this scaling behavior of the model."
+  },
+  {
+    "start": "00:06:03.220",
+    "end": "00:06:09.380",
+    "text": "So concretely, as we scaled the number of samples across a range"
+  },
+  {
+    "start": "00:06:09.380",
+    "end": "00:06:13.220",
+    "text": "of models from Llama 3 8B, 7, 8B,"
+  },
+  {
+    "start": "00:06:13.220",
+    "end": "00:06:16.900",
+    "text": "and models like Gemma or Pythia."
+  },
+  {
+    "start": "00:06:16.900",
+    "end": "00:06:20.120",
+    "text": "And this is for various range of parameter sizes,"
+  },
+  {
+    "start": "00:06:20.120",
+    "end": "00:06:23.540",
+    "text": "going from 70 million parameters all the way"
+  },
+  {
+    "start": "00:06:23.540",
+    "end": "00:06:25.720",
+    "text": "to 70 billion parameters."
+  },
+  {
+    "start": "00:06:25.720",
+    "end": "00:06:29.260",
+    "text": "We can see that we can predict this power law"
+  },
+  {
+    "start": "00:06:29.260",
+    "end": "00:06:35.720",
+    "text": "and have a predicted curve that for the most part,"
+  },
+  {
+    "start": "00:06:35.720",
+    "end": "00:06:41.740",
+    "text": "very closely follows the actual practical coverage that we"
+  },
+  {
+    "start": "00:06:41.740",
+    "end": "00:06:44.640",
+    "text": "are seeing as we increase the number of samples."
+  },
+  {
+    "start": "00:06:44.640",
+    "end": "00:06:46.700",
+    "text": "So basically, the way to think about it"
+  },
+  {
+    "start": "00:06:46.700",
+    "end": "00:06:53.150",
+    "text": "is that we can predict to achieve a certain coverage,"
+  },
+  {
+    "start": "00:06:53.150",
+    "end": "00:06:56.130",
+    "text": "how many samples we are going to need"
+  },
+  {
+    "start": "00:06:56.130",
+    "end": "00:07:00.330",
+    "text": "and how much resources we should allocate to achieve that."
+  },
+  {
+    "start": "00:07:06.850",
+    "end": "00:07:10.850",
+    "text": "And again, these curves show that this behavior"
+  },
+  {
+    "start": "00:07:10.850",
+    "end": "00:07:15.670",
+    "text": "is true for a range of models and a range of parameter sizes."
+  },
+  {
+    "start": "00:07:15.670",
+    "end": "00:07:19.090",
+    "text": "Again, one of the very interesting properties"
+  },
+  {
+    "start": "00:07:19.090",
+    "end": "00:07:21.910",
+    "text": "that we saw here is that for a very small model,"
+  },
+  {
+    "start": "00:07:21.910",
+    "end": "00:07:26.510",
+    "text": "like a 70 million parameter, we also see this scaling behavior."
+  },
+  {
+    "start": "00:07:26.510",
+    "end": "00:07:29.950",
+    "text": "And, of course, this is true for much larger models as well,"
+  },
+  {
+    "start": "00:07:29.950",
+    "end": "00:07:33.090",
+    "text": "and it is true across domains."
+  },
+  {
+    "start": "00:07:33.090",
+    "end": "00:07:41.530",
+    "text": "Now, we looked a bit more into why we see this power law"
+  },
+  {
+    "start": "00:07:41.530",
+    "end": "00:07:47.570",
+    "text": "behavior in repeated sampling because it"
+  },
+  {
+    "start": "00:07:47.570",
+    "end": "00:07:50.390",
+    "text": "might be at first a little non-intuitive,"
+  },
+  {
+    "start": "00:07:50.390",
+    "end": "00:07:58.750",
+    "text": "because if the probability of the pass at one being correct,"
+  },
+  {
+    "start": "00:07:58.750",
+    "end": "00:08:02.730",
+    "text": "the probability of a correct response to a question"
+  },
+  {
+    "start": "00:08:02.730",
+    "end": "00:08:07.090",
+    "text": "is, for example, p, then we can calculate"
+  },
+  {
+    "start": "00:08:07.090",
+    "end": "00:08:09.730",
+    "text": "the probability of, at least, one"
+  },
+  {
+    "start": "00:08:09.730",
+    "end": "00:08:13.650",
+    "text": "of the answers being correct at k for an individual problems."
+  },
+  {
+    "start": "00:08:13.650",
+    "end": "00:08:19.010",
+    "text": "So for a problem i, if we have the pass at one for problem i,"
+  },
+  {
+    "start": "00:08:19.010",
+    "end": "00:08:24.810",
+    "text": "we can calculate directly what is pass at k for problem i"
+  },
+  {
+    "start": "00:08:24.810",
+    "end": "00:08:28.730",
+    "text": "with this exponential equation."
+  },
+  {
+    "start": "00:08:28.730",
+    "end": "00:08:30.510",
+    "text": "I hope this is clear for everybody,"
+  },
+  {
+    "start": "00:08:30.510",
+    "end": "00:08:35.210",
+    "text": "but basically, this 1 minus p is the probability of the first k"
+  },
+  {
+    "start": "00:08:35.210",
+    "end": "00:08:37.330",
+    "text": "answers not being correct, and then"
+  },
+  {
+    "start": "00:08:37.330",
+    "end": "00:08:40.929",
+    "text": "1 minus that is the probability of, at least, one of these k"
+  },
+  {
+    "start": "00:08:40.929",
+    "end": "00:08:45.530",
+    "text": "answers being correct, so this is for an individual problem."
+  },
+  {
+    "start": "00:08:45.530",
+    "end": "00:08:49.260",
+    "text": "But what we are seeing that across a suite of problems,"
+  },
+  {
+    "start": "00:08:49.260",
+    "end": "00:08:57.508",
+    "text": "we are seeing the power law, scaling law, meaning"
+  },
+  {
+    "start": "00:08:57.508",
+    "end": "00:09:00.720",
+    "text": "across these problems, we are seeing"
+  },
+  {
+    "start": "00:09:00.720",
+    "end": "00:09:02.460",
+    "text": "the equations are changing."
+  },
+  {
+    "start": "00:09:02.460",
+    "end": "00:09:04.880",
+    "text": "So the question that we wanted to answer"
+  },
+  {
+    "start": "00:09:04.880",
+    "end": "00:09:11.640",
+    "text": "is what behavior should we see across the problem examples"
+  },
+  {
+    "start": "00:09:11.640",
+    "end": "00:09:20.360",
+    "text": "in a data set that justifies our power law scaling laws?"
+  },
+  {
+    "start": "00:09:20.360",
+    "end": "00:09:26.600",
+    "text": "And by looking into that further, what was observed"
+  },
+  {
+    "start": "00:09:26.600",
+    "end": "00:09:32.280",
+    "text": "is that in order to have the scaling laws that we observed,"
+  },
+  {
+    "start": "00:09:32.280",
+    "end": "00:09:35.160",
+    "text": "the sufficient and necessary condition for it"
+  },
+  {
+    "start": "00:09:35.160",
+    "end": "00:09:39.100",
+    "text": "is that we have a long tail of hard problems."
+  },
+  {
+    "start": "00:09:42.480",
+    "end": "00:09:45.560",
+    "text": "Basically, from a mathematical perspective,"
+  },
+  {
+    "start": "00:09:45.560",
+    "end": "00:09:48.900",
+    "text": "we are going to need that because this is the power law"
+  },
+  {
+    "start": "00:09:48.900",
+    "end": "00:09:53.420",
+    "text": "scaling, this is the per problem exponential scaling laws,"
+  },
+  {
+    "start": "00:09:53.420",
+    "end": "00:09:55.540",
+    "text": "and this is like this sort."
+  },
+  {
+    "start": "00:09:55.540",
+    "end": "00:10:00.960",
+    "text": "We need to have this curve for the past at one of problems"
+  },
+  {
+    "start": "00:10:00.960",
+    "end": "00:10:05.680",
+    "text": "in order to justify this power law scaling."
+  },
+  {
+    "start": "00:10:05.680",
+    "end": "00:10:09.620",
+    "text": "And empirically, when we looked into the problems,"
+  },
+  {
+    "start": "00:10:09.620",
+    "end": "00:10:12.420",
+    "text": "we saw that this condition holds."
+  },
+  {
+    "start": "00:10:12.420",
+    "end": "00:10:14.520",
+    "text": "And again, what this condition is"
+  },
+  {
+    "start": "00:10:14.520",
+    "end": "00:10:21.640",
+    "text": "is that we have a long tail of really hard problems on the most"
+  },
+  {
+    "start": "00:10:21.640",
+    "end": "00:10:23.380",
+    "text": "complex side of things."
+  },
+  {
+    "start": "00:10:23.380",
+    "end": "00:10:30.640",
+    "text": "For example, let's take a look at this model and the count"
+  },
+  {
+    "start": "00:10:30.640",
+    "end": "00:10:33.440",
+    "text": "of problems that are solved at pass at one"
+  },
+  {
+    "start": "00:10:33.440",
+    "end": "00:10:36.380",
+    "text": "and add more and more samples."
+  },
+  {
+    "start": "00:10:36.380",
+    "end": "00:10:38.720",
+    "text": "It seems like across all these problems,"
+  },
+  {
+    "start": "00:10:38.720",
+    "end": "00:10:41.440",
+    "text": "a large portion of problems are simpler"
+  },
+  {
+    "start": "00:10:41.440",
+    "end": "00:10:43.340",
+    "text": "and they're solved in pass at one."
+  },
+  {
+    "start": "00:10:43.340",
+    "end": "00:10:45.480",
+    "text": "And as we increase the complexity"
+  },
+  {
+    "start": "00:10:45.480",
+    "end": "00:10:48.560",
+    "text": "of the problems, where the pass at one probability"
+  },
+  {
+    "start": "00:10:48.560",
+    "end": "00:10:50.580",
+    "text": "is going to become lower and lower,"
+  },
+  {
+    "start": "00:10:50.580",
+    "end": "00:10:56.040",
+    "text": "we have a long tail of problems that have that property."
+  },
+  {
+    "start": "00:10:56.040",
+    "end": "00:10:58.680",
+    "text": "So these curves that you see here"
+  },
+  {
+    "start": "00:10:58.680",
+    "end": "00:11:03.240",
+    "text": "from high at simpler problems and low at harder and harder"
+  },
+  {
+    "start": "00:11:03.240",
+    "end": "00:11:05.880",
+    "text": "problems, meaning lower and lower paths at one"
+  },
+  {
+    "start": "00:11:05.880",
+    "end": "00:11:08.640",
+    "text": "is the type of problems, is the type of behavior"
+  },
+  {
+    "start": "00:11:08.640",
+    "end": "00:11:11.700",
+    "text": "that we are seeing across these tasks,"
+  },
+  {
+    "start": "00:11:11.700",
+    "end": "00:11:15.520",
+    "text": "and that is why we can see the scaling"
+  },
+  {
+    "start": "00:11:15.520",
+    "end": "00:11:20.360",
+    "text": "laws that we have observed."
+  },
+  {
+    "start": "00:11:20.360",
+    "end": "00:11:30.200",
+    "text": "Now, what this means for the science and the engineering"
+  },
+  {
+    "start": "00:11:30.200",
+    "end": "00:11:34.560",
+    "text": "around LLMs is that while previously companies"
+  },
+  {
+    "start": "00:11:34.560",
+    "end": "00:11:37.280",
+    "text": "would spend hundreds of millions of dollars,"
+  },
+  {
+    "start": "00:11:37.280",
+    "end": "00:11:42.310",
+    "text": "or billions of dollars on pre-training alone,"
+  },
+  {
+    "start": "00:11:42.310",
+    "end": "00:11:44.690",
+    "text": "and then a lot less on fine tuning"
+  },
+  {
+    "start": "00:11:44.690",
+    "end": "00:11:48.110",
+    "text": "and then almost like nothing at each inference"
+  },
+  {
+    "start": "00:11:48.110",
+    "end": "00:11:50.470",
+    "text": "call because it used to be like a one time"
+  },
+  {
+    "start": "00:11:50.470",
+    "end": "00:11:53.910",
+    "text": "back and forth between the user and the query and the model."
+  },
+  {
+    "start": "00:11:53.910",
+    "end": "00:11:56.150",
+    "text": "Now we have a new paradigm, where"
+  },
+  {
+    "start": "00:11:56.150",
+    "end": "00:12:00.210",
+    "text": "we can spend a whole lot more compute on inference,"
+  },
+  {
+    "start": "00:12:00.210",
+    "end": "00:12:03.290",
+    "text": "and use that to increase the capability of model."
+  },
+  {
+    "start": "00:12:03.290",
+    "end": "00:12:06.490",
+    "text": "And this compute the inference compute can be done offline."
+  },
+  {
+    "start": "00:12:06.490",
+    "end": "00:12:10.550",
+    "text": "We can release our agents to go solve a problem"
+  },
+  {
+    "start": "00:12:10.550",
+    "end": "00:12:13.990",
+    "text": "and just keep generating tokens and keep"
+  },
+  {
+    "start": "00:12:13.990",
+    "end": "00:12:17.970",
+    "text": "improving the quality of the answers that they generate."
+  },
+  {
+    "start": "00:12:20.510",
+    "end": "00:12:24.550",
+    "text": "Now, when we talk about this repeated sampling,"
+  },
+  {
+    "start": "00:12:24.550",
+    "end": "00:12:29.710",
+    "text": "something that's important to have in mind"
+  },
+  {
+    "start": "00:12:29.710",
+    "end": "00:12:32.750",
+    "text": "is the need for automated verification"
+  },
+  {
+    "start": "00:12:32.750",
+    "end": "00:12:35.090",
+    "text": "because if you have a bunch of samples,"
+  },
+  {
+    "start": "00:12:35.090",
+    "end": "00:12:38.470",
+    "text": "we still need to know which one of them are the correct ones"
+  },
+  {
+    "start": "00:12:38.470",
+    "end": "00:12:40.810",
+    "text": "and how to go about selecting that."
+  },
+  {
+    "start": "00:12:43.430",
+    "end": "00:12:48.470",
+    "text": "In certain domains, verification is easier than the others."
+  },
+  {
+    "start": "00:12:48.470",
+    "end": "00:12:52.830",
+    "text": "For example, for certain types of math problems,"
+  },
+  {
+    "start": "00:12:52.830",
+    "end": "00:12:55.550",
+    "text": "you can use formal proofs."
+  },
+  {
+    "start": "00:12:55.550",
+    "end": "00:12:59.230",
+    "text": "So given a proof, the strategy, we"
+  },
+  {
+    "start": "00:12:59.230",
+    "end": "00:13:03.110",
+    "text": "can run them by these formal proof software tools"
+  },
+  {
+    "start": "00:13:03.110",
+    "end": "00:13:06.750",
+    "text": "to verify whether each step is correct or not."
+  },
+  {
+    "start": "00:13:06.750",
+    "end": "00:13:09.250",
+    "text": "We can write unit tests for coding."
+  },
+  {
+    "start": "00:13:09.250",
+    "end": "00:13:15.130",
+    "text": "And in some cases, writing a unit test arguably, arguably,"
+  },
+  {
+    "start": "00:13:15.130",
+    "end": "00:13:18.990",
+    "text": "is a much simpler task than writing the entire program that"
+  },
+  {
+    "start": "00:13:18.990",
+    "end": "00:13:21.950",
+    "text": "solves a problem, so the unit test"
+  },
+  {
+    "start": "00:13:21.950",
+    "end": "00:13:24.870",
+    "text": "can be written, for example, by humans,"
+  },
+  {
+    "start": "00:13:24.870",
+    "end": "00:13:29.990",
+    "text": "and we can use that as our verifier."
+  },
+  {
+    "start": "00:13:29.990",
+    "end": "00:13:33.210",
+    "text": "There are other cases like AI as a compiler,"
+  },
+  {
+    "start": "00:13:33.210",
+    "end": "00:13:37.550",
+    "text": "and this is one of the projects in the lab and the direction"
+  },
+  {
+    "start": "00:13:37.550",
+    "end": "00:13:39.740",
+    "text": "that I'm very excited about, and that"
+  },
+  {
+    "start": "00:13:39.740",
+    "end": "00:13:42.700",
+    "text": "is when we can generate compiler lower level"
+  },
+  {
+    "start": "00:13:42.700",
+    "end": "00:13:48.140",
+    "text": "code, like CUDA for a source code like PyTorch with LLM."
+  },
+  {
+    "start": "00:13:48.140",
+    "end": "00:13:50.100",
+    "text": "And the reason this is verifiable"
+  },
+  {
+    "start": "00:13:50.100",
+    "end": "00:13:56.860",
+    "text": "is that, for example here, we can always"
+  },
+  {
+    "start": "00:13:56.860",
+    "end": "00:14:01.020",
+    "text": "compare the output of CUDA with the source PyTorch"
+  },
+  {
+    "start": "00:14:01.020",
+    "end": "00:14:04.320",
+    "text": "and see if they're the same for any given input."
+  },
+  {
+    "start": "00:14:04.320",
+    "end": "00:14:08.780",
+    "text": "So we don't need if we want to say whether the model has"
+  },
+  {
+    "start": "00:14:08.780",
+    "end": "00:14:13.160",
+    "text": "generated the correct CUDA code for our source PyTorch code,"
+  },
+  {
+    "start": "00:14:13.160",
+    "end": "00:14:19.120",
+    "text": "we can just see whether their outputs match for any inputs."
+  },
+  {
+    "start": "00:14:21.980",
+    "end": "00:14:24.440",
+    "text": "For those of you who are not familiar CUDA,"
+  },
+  {
+    "start": "00:14:24.440",
+    "end": "00:14:28.180",
+    "text": "I hope you all are, but it's a lower level language"
+  },
+  {
+    "start": "00:14:28.180",
+    "end": "00:14:31.820",
+    "text": "for writing more hardware aware and optimized"
+  },
+  {
+    "start": "00:14:31.820",
+    "end": "00:14:35.840",
+    "text": "for hardware code on GPUs."
+  },
+  {
+    "start": "00:14:38.620",
+    "end": "00:14:43.500",
+    "text": "For example, here, we have a data set,"
+  },
+  {
+    "start": "00:14:43.500",
+    "end": "00:14:47.180",
+    "text": "or benchmark on CUDA generation called KernelBench."
+  },
+  {
+    "start": "00:14:47.180",
+    "end": "00:14:52.380",
+    "text": "And here, again, we are seeing the same linear improving"
+  },
+  {
+    "start": "00:14:52.380",
+    "end": "00:14:56.440",
+    "text": "coverage in this case for CUDA code generation"
+  },
+  {
+    "start": "00:14:56.440",
+    "end": "00:14:58.460",
+    "text": "as we increase the number of samples"
+  },
+  {
+    "start": "00:14:58.460",
+    "end": "00:15:00.160",
+    "text": "that we take from the model."
+  },
+  {
+    "start": "00:15:00.160",
+    "end": "00:15:02.220",
+    "text": "And in this case, we have this, again,"
+  },
+  {
+    "start": "00:15:02.220",
+    "end": "00:15:05.260",
+    "text": "by default, perfect verifier that we"
+  },
+  {
+    "start": "00:15:05.260",
+    "end": "00:15:10.740",
+    "text": "can use for measuring the correctness of our CUDA"
+  },
+  {
+    "start": "00:15:10.740",
+    "end": "00:15:13.300",
+    "text": "generated code."
+  },
+  {
+    "start": "00:15:13.300",
+    "end": "00:15:15.580",
+    "text": "And there are other examples of this."
+  },
+  {
+    "start": "00:15:18.100",
+    "end": "00:15:20.140",
+    "text": "Basically, any kind of translation"
+  },
+  {
+    "start": "00:15:20.140",
+    "end": "00:15:21.800",
+    "text": "between two languages."
+  },
+  {
+    "start": "00:15:21.800",
+    "end": "00:15:27.000",
+    "text": "If you want to port from Python, or C++ to Java, or vice versa,"
+  },
+  {
+    "start": "00:15:27.000",
+    "end": "00:15:28.760",
+    "text": "again, this is true."
+  },
+  {
+    "start": "00:15:28.760",
+    "end": "00:15:34.420",
+    "text": "You can measure the equivalency much easier."
+  },
+  {
+    "start": "00:15:34.420",
+    "end": "00:15:38.060",
+    "text": "Now there are domains that we don't have verifier for."
+  },
+  {
+    "start": "00:15:38.060",
+    "end": "00:15:40.700",
+    "text": "And in those domains, what we observe"
+  },
+  {
+    "start": "00:15:40.700",
+    "end": "00:15:43.900",
+    "text": "is that there is a large gap between best"
+  },
+  {
+    "start": "00:15:43.900",
+    "end": "00:15:46.980",
+    "text": "of n methods such as majority vote"
+  },
+  {
+    "start": "00:15:46.980",
+    "end": "00:15:52.220",
+    "text": "voting and model-based rankers and what is"
+  },
+  {
+    "start": "00:15:52.220",
+    "end": "00:15:54.640",
+    "text": "the true coverage of the model."
+  },
+  {
+    "start": "00:15:54.640",
+    "end": "00:15:58.700",
+    "text": "Let's take a look at one example here."
+  },
+  {
+    "start": "00:15:58.700",
+    "end": "00:16:01.240",
+    "text": "So here, we compared a few different methods."
+  },
+  {
+    "start": "00:16:01.240",
+    "end": "00:16:03.460",
+    "text": "We are going to learn about reward models"
+  },
+  {
+    "start": "00:16:03.460",
+    "end": "00:16:06.820",
+    "text": "or verifiers on Monday more, but let's take"
+  },
+  {
+    "start": "00:16:06.820",
+    "end": "00:16:08.360",
+    "text": "a look at these examples."
+  },
+  {
+    "start": "00:16:08.360",
+    "end": "00:16:11.300",
+    "text": "So we have a number of samples, and then we"
+  },
+  {
+    "start": "00:16:11.300",
+    "end": "00:16:13.480",
+    "text": "are measuring the success rate here,"
+  },
+  {
+    "start": "00:16:13.480",
+    "end": "00:16:17.900",
+    "text": "like basically what would be the output of this system?"
+  },
+  {
+    "start": "00:16:17.900",
+    "end": "00:16:20.060",
+    "text": "Majority voting, or the green one"
+  },
+  {
+    "start": "00:16:20.060",
+    "end": "00:16:24.740",
+    "text": "is we just see which answer among the generated answers"
+  },
+  {
+    "start": "00:16:24.740",
+    "end": "00:16:28.760",
+    "text": "has appeared the most, so based on that,"
+  },
+  {
+    "start": "00:16:28.760",
+    "end": "00:16:31.180",
+    "text": "we just select that answer or that response"
+  },
+  {
+    "start": "00:16:31.180",
+    "end": "00:16:33.340",
+    "text": "as the output of our system."
+  },
+  {
+    "start": "00:16:33.340",
+    "end": "00:16:34.930",
+    "text": "Does that make sense?"
+  },
+  {
+    "start": "00:16:34.930",
+    "end": "00:16:36.570",
+    "text": "It's just majority voting."
+  },
+  {
+    "start": "00:16:36.570",
+    "end": "00:16:39.590",
+    "text": "And the blue line here is coverage."
+  },
+  {
+    "start": "00:16:39.590",
+    "end": "00:16:43.210",
+    "text": "This is assuming we had a perfect selector, or verifier"
+  },
+  {
+    "start": "00:16:43.210",
+    "end": "00:16:44.210",
+    "text": "in this case."
+  },
+  {
+    "start": "00:16:44.210",
+    "end": "00:16:47.090",
+    "text": "And as you can see here, there is a large difference"
+  },
+  {
+    "start": "00:16:47.090",
+    "end": "00:16:53.530",
+    "text": "between majority voting, which plateaus after 10 or 50 samples,"
+  },
+  {
+    "start": "00:16:53.530",
+    "end": "00:16:55.970",
+    "text": "and what we could possibly get if we"
+  },
+  {
+    "start": "00:16:55.970",
+    "end": "00:17:01.050",
+    "text": "had a perfect verifier, so this is a very, very large gap."
+  },
+  {
+    "start": "00:17:01.050",
+    "end": "00:17:05.170",
+    "text": "Especially, and this gap is even more pronounced"
+  },
+  {
+    "start": "00:17:05.170",
+    "end": "00:17:06.630",
+    "text": "if you have harder problems."
+  },
+  {
+    "start": "00:17:06.630",
+    "end": "00:17:09.849",
+    "text": "So for example, the capital MATH here, data set"
+  },
+  {
+    "start": "00:17:09.849",
+    "end": "00:17:13.490",
+    "text": "is a harder, more complex data set than GSM8K"
+  },
+  {
+    "start": "00:17:13.490",
+    "end": "00:17:16.050",
+    "text": "And here, we compared other methods"
+  },
+  {
+    "start": "00:17:16.050",
+    "end": "00:17:25.089",
+    "text": "like using a reward model that measures, gives"
+  },
+  {
+    "start": "00:17:25.089",
+    "end": "00:17:30.290",
+    "text": "a reward per answer, and we take the best of those, or ways"
+  },
+  {
+    "start": "00:17:30.290",
+    "end": "00:17:31.590",
+    "text": "to combine these tools."
+  },
+  {
+    "start": "00:17:31.590",
+    "end": "00:17:34.310",
+    "text": "We will learn more about these reward models."
+  },
+  {
+    "start": "00:17:34.310",
+    "end": "00:17:37.690",
+    "text": "Basically, they're LLM-based LLMs"
+  },
+  {
+    "start": "00:17:37.690",
+    "end": "00:17:44.290",
+    "text": "that are trained to score the response quality."
+  },
+  {
+    "start": "00:17:44.290",
+    "end": "00:17:47.850",
+    "text": "And even with those, there is a large gap."
+  },
+  {
+    "start": "00:17:47.850",
+    "end": "00:17:52.770",
+    "text": "And this is what we call the generation verification gap."
+  },
+  {
+    "start": "00:17:52.770",
+    "end": "00:17:54.490",
+    "text": "So the generation, it turns out, we"
+  },
+  {
+    "start": "00:17:54.490",
+    "end": "00:17:57.470",
+    "text": "can generate a lot of good responses,"
+  },
+  {
+    "start": "00:17:57.470",
+    "end": "00:18:01.110",
+    "text": "but the verification is basically this gap."
+  },
+  {
+    "start": "00:18:01.110",
+    "end": "00:18:02.890",
+    "text": "This tells us how much we can actually"
+  },
+  {
+    "start": "00:18:02.890",
+    "end": "00:18:09.290",
+    "text": "capture those responses or those correct answers."
+  },
+  {
+    "start": "00:18:09.290",
+    "end": "00:18:13.410",
+    "text": "The reason methods such as majority voting doesn't work is"
+  },
+  {
+    "start": "00:18:13.410",
+    "end": "00:18:17.630",
+    "text": "that, as we look into the quality of answers,"
+  },
+  {
+    "start": "00:18:17.630",
+    "end": "00:18:21.770",
+    "text": "it turns out that for some problems that are hardest"
+  },
+  {
+    "start": "00:18:21.770",
+    "end": "00:18:27.010",
+    "text": "to solve, sometimes we see that they're solved maybe even once,"
+  },
+  {
+    "start": "00:18:27.010",
+    "end": "00:18:32.120",
+    "text": "or two times, or three times across the 1,000 or 10,000"
+  },
+  {
+    "start": "00:18:32.120",
+    "end": "00:18:34.600",
+    "text": "samples that we take from the model."
+  },
+  {
+    "start": "00:18:34.600",
+    "end": "00:18:40.840",
+    "text": "So these correct problems are actually very rarely solved"
+  },
+  {
+    "start": "00:18:40.840",
+    "end": "00:18:43.940",
+    "text": "by the model with the samples that we are taking from it,"
+  },
+  {
+    "start": "00:18:43.940",
+    "end": "00:18:48.320",
+    "text": "so it makes sense that a majority voting mechanism cannot"
+  },
+  {
+    "start": "00:18:48.320",
+    "end": "00:18:51.240",
+    "text": "capture those because they're rare."
+  },
+  {
+    "start": "00:18:51.240",
+    "end": "00:18:53.820",
+    "text": "But for many of the problems in this case,"
+  },
+  {
+    "start": "00:18:53.820",
+    "end": "00:18:56.200",
+    "text": "especially for the GSM8K, which is simpler"
+  },
+  {
+    "start": "00:18:56.200",
+    "end": "00:19:00.600",
+    "text": "because the answers, or responses are simpler"
+  },
+  {
+    "start": "00:19:00.600",
+    "end": "00:19:04.660",
+    "text": "to generate, majority voting works for many of the problems,"
+  },
+  {
+    "start": "00:19:04.660",
+    "end": "00:19:07.800",
+    "text": "but even in this case, for some of the hardest"
+  },
+  {
+    "start": "00:19:07.800",
+    "end": "00:19:12.240",
+    "text": "problems, the frequency of correct answers actually"
+  },
+  {
+    "start": "00:19:12.240",
+    "end": "00:19:14.080",
+    "text": "pretty low."
+  },
+  {
+    "start": "00:19:14.080",
+    "end": "00:19:16.700",
+    "text": "So that makes it harder from a verification perspective"
+  },
+  {
+    "start": "00:19:16.700",
+    "end": "00:19:18.300",
+    "text": "how do you find them?"
+  },
+  {
+    "start": "00:19:18.300",
+    "end": "00:19:22.800",
+    "text": "How do you find that which ones are correct?"
+  },
+  {
+    "start": "00:19:22.800",
+    "end": "00:19:24.400",
+    "text": "Now, I want you to--"
+  },
+  {
+    "start": "00:19:24.400",
+    "end": "00:19:28.800",
+    "text": "here are some discussion questions"
+  },
+  {
+    "start": "00:19:28.800",
+    "end": "00:19:32.840",
+    "text": "that I want to put it here for something like two minutes"
+  },
+  {
+    "start": "00:19:32.840",
+    "end": "00:19:35.440",
+    "text": "or so, and I want you to think about it."
+  },
+  {
+    "start": "00:19:35.440",
+    "end": "00:19:41.640",
+    "text": "And hopefully, we'll have some volunteers"
+  },
+  {
+    "start": "00:19:41.640",
+    "end": "00:19:46.200",
+    "text": "and volunteer some of you to answer some of them."
+  },
+  {
+    "start": "00:19:46.200",
+    "end": "00:19:48.640",
+    "text": "So two minutes for this."
+  },
+  {
+    "start": "00:19:48.640",
+    "end": "00:19:52.033",
+    "text": "Maybe we talk after."
+  },
+  {
+    "start": "00:19:52.033",
+    "end": "00:19:54.000",
+    "text": "[SIDE CONVERSATION]"
+  },
+  {
+    "start": "00:19:54.000",
+    "end": "00:19:57.520",
+    "text": "OK, let's get back."
+  },
+  {
+    "start": "00:19:57.520",
+    "end": "00:20:01.800",
+    "text": "Who wants to answer question 1?"
+  },
+  {
+    "start": "00:20:01.800",
+    "end": "00:20:03.760",
+    "text": "I'm very interested in how you would"
+  },
+  {
+    "start": "00:20:03.760",
+    "end": "00:20:08.560",
+    "text": "build on this, if you were to do some research here,"
+  },
+  {
+    "start": "00:20:08.560",
+    "end": "00:20:13.700",
+    "text": "or what takeaways you got from these papers."
+  },
+  {
+    "start": "00:20:17.200",
+    "end": "00:20:17.840",
+    "text": "Anyone?"
+  },
+  {
+    "start": "00:20:21.720",
+    "end": "00:20:22.880",
+    "text": "Yes."
+  },
+  {
+    "start": "00:20:22.880",
+    "end": "00:20:31.920",
+    "text": "One takeaway is that sampling any answers and issues."
+  },
+  {
+    "start": "00:20:31.920",
+    "end": "00:20:34.320",
+    "text": "If you have a good verifier, it's greatly"
+  },
+  {
+    "start": "00:20:34.320",
+    "end": "00:20:36.640",
+    "text": "helps with your accuracy."
+  },
+  {
+    "start": "00:20:36.640",
+    "end": "00:20:40.760",
+    "text": "And the second takeaway is that the quality of the verifier"
+  },
+  {
+    "start": "00:20:40.760",
+    "end": "00:20:44.320",
+    "text": "is very important in this approach."
+  },
+  {
+    "start": "00:20:44.320",
+    "end": "00:20:44.980",
+    "text": "That's right."
+  },
+  {
+    "start": "00:20:49.360",
+    "end": "00:20:51.540",
+    "text": "Anything else?"
+  },
+  {
+    "start": "00:20:51.540",
+    "end": "00:20:52.040",
+    "text": "Yes."
+  },
+  {
+    "start": "00:20:52.040",
+    "end": "00:20:56.740",
+    "text": "[INAUDIBLE] it is possible to write a model to [INAUDIBLE]"
+  },
+  {
+    "start": "00:20:56.740",
+    "end": "00:20:59.360",
+    "text": "that way make examples."
+  },
+  {
+    "start": "00:20:59.360",
+    "end": "00:21:04.680",
+    "text": "For example, like the model [INAUDIBLE] descriptions"
+  },
+  {
+    "start": "00:21:04.680",
+    "end": "00:21:12.840",
+    "text": "and the model for the solution that is a [INAUDIBLE]"
+  },
+  {
+    "start": "00:21:12.840",
+    "end": "00:21:16.140",
+    "text": "even if you're not sure the solution is right."
+  },
+  {
+    "start": "00:21:16.140",
+    "end": "00:21:19.200",
+    "text": "Are you talking about revising a solution--"
+  },
+  {
+    "start": "00:21:19.200",
+    "end": "00:21:20.120",
+    "text": "Yeah."
+  },
+  {
+    "start": "00:21:20.120",
+    "end": "00:21:22.200",
+    "text": "--by next round?"
+  },
+  {
+    "start": "00:21:22.200",
+    "end": "00:21:25.200",
+    "text": "We're going to hear about it in a minute."
+  },
+  {
+    "start": "00:21:25.200",
+    "end": "00:21:26.020",
+    "text": "Sounds good."
+  },
+  {
+    "start": "00:21:26.020",
+    "end": "00:21:27.190",
+    "text": "Yes."
+  },
+  {
+    "start": "00:21:27.190",
+    "end": "00:21:29.050",
+    "text": "I'm looking at it two directions."
+  },
+  {
+    "start": "00:21:29.050",
+    "end": "00:21:32.070",
+    "text": "One is the [INAUDIBLE] and accuracy."
+  },
+  {
+    "start": "00:21:32.070",
+    "end": "00:21:35.990",
+    "text": "And for that, I would look at a hybrid approach, where"
+  },
+  {
+    "start": "00:21:35.990",
+    "end": "00:21:38.670",
+    "text": "I would develop a knowledge graph along"
+  },
+  {
+    "start": "00:21:38.670",
+    "end": "00:21:42.470",
+    "text": "with advanced documentation."
+  },
+  {
+    "start": "00:21:42.470",
+    "end": "00:21:45.290",
+    "text": "And then any returns to the rank method."
+  },
+  {
+    "start": "00:21:45.290",
+    "end": "00:21:49.670",
+    "text": "When [INAUDIBLE] comes time the score is lesser on the accuracy"
+  },
+  {
+    "start": "00:21:49.670",
+    "end": "00:21:53.390",
+    "text": "and more or less rely on the knowledge"
+  },
+  {
+    "start": "00:21:53.390",
+    "end": "00:21:55.870",
+    "text": "to give me more accurate answers, that way you"
+  },
+  {
+    "start": "00:21:55.870",
+    "end": "00:22:01.030",
+    "text": "can increase the speed in the answer while [INAUDIBLE]."
+  },
+  {
+    "start": "00:22:01.030",
+    "end": "00:22:08.790",
+    "text": "So you're suggesting use RAC to boost or compare?"
+  },
+  {
+    "start": "00:22:08.790",
+    "end": "00:22:13.190",
+    "text": "With the knowledge first, and then only when they"
+  },
+  {
+    "start": "00:22:13.190",
+    "end": "00:22:15.410",
+    "text": "feel that the accuracy is not coming up to the mark,"
+  },
+  {
+    "start": "00:22:15.410",
+    "end": "00:22:16.990",
+    "text": "we go through the right documentation"
+  },
+  {
+    "start": "00:22:16.990",
+    "end": "00:22:21.630",
+    "text": "because that also lowers the time, and there is--"
+  },
+  {
+    "start": "00:22:21.630",
+    "end": "00:22:25.330",
+    "text": "So you're asking that can help with efficiency in the time"
+  },
+  {
+    "start": "00:22:25.330",
+    "end": "00:22:25.830",
+    "text": "domain?"
+  },
+  {
+    "start": "00:22:25.830",
+    "end": "00:22:29.470",
+    "text": "Is trying to reduce the dependency and damage"
+  },
+  {
+    "start": "00:22:29.470",
+    "end": "00:22:33.030",
+    "text": "to increase the accuracy and precision."
+  },
+  {
+    "start": "00:22:33.030",
+    "end": "00:22:34.750",
+    "text": "One more."
+  },
+  {
+    "start": "00:22:34.750",
+    "end": "00:22:36.590",
+    "text": "Maybe you were waiting."
+  },
+  {
+    "start": "00:22:36.590",
+    "end": "00:22:41.070",
+    "text": "Yeah, so something that I've thought about also is just--"
+  },
+  {
+    "start": "00:22:41.070",
+    "end": "00:22:47.150",
+    "text": "and even if it's easy to medium level of difficulty with respect"
+  },
+  {
+    "start": "00:22:47.150",
+    "end": "00:22:51.950",
+    "text": "to verification or verifiable domains,"
+  },
+  {
+    "start": "00:22:51.950",
+    "end": "00:22:57.110",
+    "text": "it would be cool to see how pass at k changes with respect"
+  },
+  {
+    "start": "00:22:57.110",
+    "end": "00:23:01.070",
+    "text": "to k, when we employ initial search techniques, almost"
+  },
+  {
+    "start": "00:23:01.070",
+    "end": "00:23:02.910",
+    "text": "like a self-study approach."
+  },
+  {
+    "start": "00:23:02.910",
+    "end": "00:23:04.690",
+    "text": "If there's some way to maybe consolidate,"
+  },
+  {
+    "start": "00:23:04.690",
+    "end": "00:23:07.830",
+    "text": "let's let the model explore this domain,"
+  },
+  {
+    "start": "00:23:07.830",
+    "end": "00:23:10.190",
+    "text": "gather insights as if we're not asking"
+  },
+  {
+    "start": "00:23:10.190",
+    "end": "00:23:12.490",
+    "text": "it to sample any solutions yet."
+  },
+  {
+    "start": "00:23:12.490",
+    "end": "00:23:15.450",
+    "text": "And maybe that can give way to some output context,"
+  },
+  {
+    "start": "00:23:15.450",
+    "end": "00:23:17.550",
+    "text": "and we could then funnel into parallel sampling."
+  },
+  {
+    "start": "00:23:17.550",
+    "end": "00:23:20.090",
+    "text": "We might see maybe better trends with respect--"
+  },
+  {
+    "start": "00:23:20.090",
+    "end": "00:23:21.137",
+    "text": "Absolutely."
+  },
+  {
+    "start": "00:23:21.137",
+    "end": "00:23:22.970",
+    "text": "And we're going to learn about some of them."
+  },
+  {
+    "start": "00:23:22.970",
+    "end": "00:23:25.100",
+    "text": "There are ways to improve test time scaling"
+  },
+  {
+    "start": "00:23:25.100",
+    "end": "00:23:29.500",
+    "text": "beyond just repeated sampling, including self-study, search,"
+  },
+  {
+    "start": "00:23:29.500",
+    "end": "00:23:31.300",
+    "text": "and tool use."
+  },
+  {
+    "start": "00:23:31.300",
+    "end": "00:23:34.460",
+    "text": "Maybe one more."
+  },
+  {
+    "start": "00:23:34.460",
+    "end": "00:23:36.260",
+    "text": "Yes."
+  },
+  {
+    "start": "00:23:36.260",
+    "end": "00:23:37.820",
+    "text": "Well, one interesting extension might"
+  },
+  {
+    "start": "00:23:37.820",
+    "end": "00:23:41.580",
+    "text": "be to [INAUDIBLE] verifiers."
+  },
+  {
+    "start": "00:23:41.580",
+    "end": "00:23:45.220",
+    "text": "Without a good verifier, then the best you can do"
+  },
+  {
+    "start": "00:23:45.220",
+    "end": "00:23:47.940",
+    "text": "is [INAUDIBLE] what you showed in the previous slide, which"
+  },
+  {
+    "start": "00:23:47.940",
+    "end": "00:23:50.120",
+    "text": "usually doesn't work very well for hard problems."
+  },
+  {
+    "start": "00:23:50.120",
+    "end": "00:23:52.260",
+    "text": "But maybe there are some problems,"
+  },
+  {
+    "start": "00:23:52.260",
+    "end": "00:23:56.580",
+    "text": "where it's hard to verify the answer is correct because it's"
+  },
+  {
+    "start": "00:23:56.580",
+    "end": "00:24:00.500",
+    "text": "too expensive, or it's just too hard naturally,"
+  },
+  {
+    "start": "00:24:00.500",
+    "end": "00:24:03.580",
+    "text": "but it's easy to find an answer wrong,"
+  },
+  {
+    "start": "00:24:03.580",
+    "end": "00:24:06.260",
+    "text": "so you can project like bad answers."
+  },
+  {
+    "start": "00:24:06.260",
+    "end": "00:24:08.660",
+    "text": "Maybe that would be more obvious in terms of testing."
+  },
+  {
+    "start": "00:24:08.660",
+    "end": "00:24:11.900",
+    "text": "And then you can just keep [INAUDIBLE] something"
+  },
+  {
+    "start": "00:24:11.900",
+    "end": "00:24:13.620",
+    "text": "[INAUDIBLE]."
+  },
+  {
+    "start": "00:24:13.620",
+    "end": "00:24:15.660",
+    "text": "So one interesting direction would"
+  },
+  {
+    "start": "00:24:15.660",
+    "end": "00:24:18.060",
+    "text": "be trying to look at different domains, where"
+  },
+  {
+    "start": "00:24:18.060",
+    "end": "00:24:21.040",
+    "text": "there is much difficulty."
+  },
+  {
+    "start": "00:24:21.040",
+    "end": "00:24:23.640",
+    "text": "And also maybe verification is not fully accurate,"
+  },
+  {
+    "start": "00:24:23.640",
+    "end": "00:24:25.980",
+    "text": "or maybe it's a bit lost, but verify"
+  },
+  {
+    "start": "00:24:25.980",
+    "end": "00:24:28.160",
+    "text": "it's its own model because it's a simulation."
+  },
+  {
+    "start": "00:24:28.160",
+    "end": "00:24:31.420",
+    "text": "It's like a physics, or a molecular dynamics simulation,"
+  },
+  {
+    "start": "00:24:31.420",
+    "end": "00:24:34.940",
+    "text": "or something, and then how you would deal with that."
+  },
+  {
+    "start": "00:24:34.940",
+    "end": "00:24:37.700",
+    "text": "Basically, there are other ways to filter out"
+  },
+  {
+    "start": "00:24:37.700",
+    "end": "00:24:39.200",
+    "text": "the incorrect answers."
+  },
+  {
+    "start": "00:24:39.200",
+    "end": "00:24:45.300",
+    "text": "Maybe use a simulation, or some other tool use,"
+  },
+  {
+    "start": "00:24:45.300",
+    "end": "00:24:49.680",
+    "text": "or another model to do that, depending on the domain."
+  },
+  {
+    "start": "00:24:49.680",
+    "end": "00:24:53.780",
+    "text": "So all of the data set here, the 10,000 different samples per"
+  },
+  {
+    "start": "00:24:53.780",
+    "end": "00:24:57.440",
+    "text": "problem is available on Hugging Face."
+  },
+  {
+    "start": "00:24:57.440",
+    "end": "00:24:59.580",
+    "text": "If anybody is interested to go around"
+  },
+  {
+    "start": "00:24:59.580",
+    "end": "00:25:05.100",
+    "text": "how to shrink that generation verification gap,"
+  },
+  {
+    "start": "00:25:05.100",
+    "end": "00:25:10.820",
+    "text": "that could be potentially a good research project for the course."
+  },
+  {
+    "start": "00:25:10.820",
+    "end": "00:25:12.560",
+    "text": "Yes, last question."
+  },
+  {
+    "start": "00:25:12.560",
+    "end": "00:25:13.060",
+    "text": "Yeah."
+  },
+  {
+    "start": "00:25:13.060",
+    "end": "00:25:17.740",
+    "text": "Can one try to generate multiple verifiers like maybe generate"
+  },
+  {
+    "start": "00:25:17.740",
+    "end": "00:25:22.580",
+    "text": "10,000 verifiers and then do majority voting on the result"
+  },
+  {
+    "start": "00:25:22.580",
+    "end": "00:25:24.100",
+    "text": "of the bad verifiers?"
+  },
+  {
+    "start": "00:25:24.100",
+    "end": "00:25:25.980",
+    "text": "Yes."
+  },
+  {
+    "start": "00:25:25.980",
+    "end": "00:25:28.360",
+    "text": "That's also a very interesting research question."
+  },
+  {
+    "start": "00:25:28.360",
+    "end": "00:25:31.980",
+    "text": "So on Monday, we're going to learn about this weaver, which"
+  },
+  {
+    "start": "00:25:31.980",
+    "end": "00:25:34.880",
+    "text": "is a work that we've done on ensembling,"
+  },
+  {
+    "start": "00:25:34.880",
+    "end": "00:25:37.280",
+    "text": "but a week supervised ensembling of verifiers."
+  },
+  {
+    "start": "00:25:37.280",
+    "end": "00:25:41.440",
+    "text": "We don't have 1,000 of them, but we can have 10 or 20 of them,"
+  },
+  {
+    "start": "00:25:41.440",
+    "end": "00:25:44.140",
+    "text": "but that direction is definitely also interesting."
+  },
+  {
+    "start": "00:25:44.140",
+    "end": "00:25:47.900",
+    "text": "It's very costly, though, from a compute perspective."
+  },
+  {
+    "start": "00:25:47.900",
+    "end": "00:25:52.100",
+    "text": "Maybe we should move on to the-- any other about the other two"
+  },
+  {
+    "start": "00:25:52.100",
+    "end": "00:25:54.460",
+    "text": "questions, anything?"
+  },
+  {
+    "start": "00:25:54.460",
+    "end": "00:25:56.880",
+    "text": "We discussed some of it in our discussion,"
+  },
+  {
+    "start": "00:25:56.880",
+    "end": "00:26:00.000",
+    "text": "but anything that you want to share last minute?"
+  },
+  {
+    "start": "00:26:00.000",
+    "end": "00:26:01.393",
+    "text": "Yes."
+  },
+  {
+    "start": "00:26:01.393",
+    "end": "00:26:04.380",
+    "text": "What is up with the investigated whether the coverage"
+  },
+  {
+    "start": "00:26:04.380",
+    "end": "00:26:08.240",
+    "text": "number is real, like software engineering tasks, for example?"
+  },
+  {
+    "start": "00:26:08.240",
+    "end": "00:26:09.800",
+    "text": "Or could you pass the test cases,"
+  },
+  {
+    "start": "00:26:09.800",
+    "end": "00:26:12.620",
+    "text": "but it's actually about [INAUDIBLE]?"
+  },
+  {
+    "start": "00:26:12.620",
+    "end": "00:26:14.480",
+    "text": "For example, for the math problems,"
+  },
+  {
+    "start": "00:26:14.480",
+    "end": "00:26:17.780",
+    "text": "we manually looked into the answered questions,"
+  },
+  {
+    "start": "00:26:17.780",
+    "end": "00:26:22.830",
+    "text": "and it was something above like a 90s, 7%,"
+  },
+  {
+    "start": "00:26:22.830",
+    "end": "00:26:27.170",
+    "text": "8% by manually checking that, but that's also always a case"
+  },
+  {
+    "start": "00:26:27.170",
+    "end": "00:26:31.490",
+    "text": "for failure mode, if your unit tests don't have true coverage"
+  },
+  {
+    "start": "00:26:31.490",
+    "end": "00:26:37.370",
+    "text": "of the code, so the quality of the verifier matters."
+  },
+  {
+    "start": "00:26:37.370",
+    "end": "00:26:38.530",
+    "text": "Yes."
+  },
+  {
+    "start": "00:26:38.530",
+    "end": "00:26:43.490",
+    "text": "Maybe it's moved up to be able to generate [INAUDIBLE],"
+  },
+  {
+    "start": "00:26:43.490",
+    "end": "00:26:45.830",
+    "text": "so you're verifying each node?"
+  },
+  {
+    "start": "00:26:45.830",
+    "end": "00:26:49.130",
+    "text": "Yeah, let's talk about that and what's coming next"
+  },
+  {
+    "start": "00:26:49.130",
+    "end": "00:26:55.410",
+    "text": "and how we can make different ways of test time scaling."
+  },
+  {
+    "start": "00:26:55.410",
+    "end": "00:26:58.890",
+    "text": "So with the monkeys framework, we"
+  },
+  {
+    "start": "00:26:58.890",
+    "end": "00:27:01.310",
+    "text": "saw that repeated sampling is effective,"
+  },
+  {
+    "start": "00:27:01.310",
+    "end": "00:27:04.550",
+    "text": "but there are other ways to scale sampling."
+  },
+  {
+    "start": "00:27:04.550",
+    "end": "00:27:06.770",
+    "text": "And let's take a look at this paper."
+  },
+  {
+    "start": "00:27:06.770",
+    "end": "00:27:09.930",
+    "text": "Scaling LLM test time compute optimally"
+  },
+  {
+    "start": "00:27:09.930",
+    "end": "00:27:12.910",
+    "text": "can be more effective than scaling model parameters."
+  },
+  {
+    "start": "00:27:12.910",
+    "end": "00:27:15.930",
+    "text": "We going to touch on certain aspects of it that"
+  },
+  {
+    "start": "00:27:15.930",
+    "end": "00:27:20.410",
+    "text": "is most relevant to test time scaling, so there are two ways."
+  },
+  {
+    "start": "00:27:20.410",
+    "end": "00:27:22.770",
+    "text": "Parallel sampling is one way for us"
+  },
+  {
+    "start": "00:27:22.770",
+    "end": "00:27:27.850",
+    "text": "to generate multiple answers per input question."
+  },
+  {
+    "start": "00:27:27.850",
+    "end": "00:27:31.450",
+    "text": "But there is another way to generate, or generate answers,"
+  },
+  {
+    "start": "00:27:31.450",
+    "end": "00:27:34.490",
+    "text": "or use test time scaling to improve the quality,"
+  },
+  {
+    "start": "00:27:34.490",
+    "end": "00:27:38.390",
+    "text": "and that is when we do sequential revisions."
+  },
+  {
+    "start": "00:27:38.390",
+    "end": "00:27:42.330",
+    "text": "For example, the model comes up with one initial steps"
+  },
+  {
+    "start": "00:27:42.330",
+    "end": "00:27:44.650",
+    "text": "of the problem, or one initial approach"
+  },
+  {
+    "start": "00:27:44.650",
+    "end": "00:27:48.770",
+    "text": "for solving the problem, and it keeps revising that,"
+  },
+  {
+    "start": "00:27:48.770",
+    "end": "00:27:52.310",
+    "text": "or it keeps improving and adding to that."
+  },
+  {
+    "start": "00:27:52.310",
+    "end": "00:27:55.210",
+    "text": "And that is the sequential approach, so instead"
+  },
+  {
+    "start": "00:27:55.210",
+    "end": "00:27:57.030",
+    "text": "of asking the model multiple times,"
+  },
+  {
+    "start": "00:27:57.030",
+    "end": "00:28:01.870",
+    "text": "we let the model know that it can keep revising its answers,"
+  },
+  {
+    "start": "00:28:01.870",
+    "end": "00:28:03.890",
+    "text": "look into that from a different angles,"
+  },
+  {
+    "start": "00:28:03.890",
+    "end": "00:28:08.530",
+    "text": "and continue doing so until it's confident"
+  },
+  {
+    "start": "00:28:08.530",
+    "end": "00:28:10.650",
+    "text": "that it's ready to generate an answer"
+  },
+  {
+    "start": "00:28:10.650",
+    "end": "00:28:12.290",
+    "text": "and then finally output that."
+  },
+  {
+    "start": "00:28:12.290",
+    "end": "00:28:12.970",
+    "text": "Yes."
+  },
+  {
+    "start": "00:28:12.970",
+    "end": "00:28:17.880",
+    "text": "So is this by our own prompting or is it the models?"
+  },
+  {
+    "start": "00:28:17.880",
+    "end": "00:28:20.940",
+    "text": "In this case, let's assume by our own prompting,"
+  },
+  {
+    "start": "00:28:20.940",
+    "end": "00:28:23.220",
+    "text": "but when you look at the reasoning models,"
+  },
+  {
+    "start": "00:28:23.220",
+    "end": "00:28:24.560",
+    "text": "they are now trained."
+  },
+  {
+    "start": "00:28:24.560",
+    "end": "00:28:27.760",
+    "text": "Internally, we see this kind of behavior in them,"
+  },
+  {
+    "start": "00:28:27.760",
+    "end": "00:28:35.360",
+    "text": "so they do this revisions sometimes in their own answers."
+  },
+  {
+    "start": "00:28:35.360",
+    "end": "00:28:39.860",
+    "text": "Now, there is another way to scale test time compute,"
+  },
+  {
+    "start": "00:28:39.860",
+    "end": "00:28:43.820",
+    "text": "and that is how we select the answers."
+  },
+  {
+    "start": "00:28:43.820",
+    "end": "00:28:47.960",
+    "text": "So for the parallel sampling, we looked into the outcome"
+  },
+  {
+    "start": "00:28:47.960",
+    "end": "00:28:50.420",
+    "text": "like there are n different responses."
+  },
+  {
+    "start": "00:28:50.420",
+    "end": "00:28:53.700",
+    "text": "We look into the outcome and see if they're correct or not."
+  },
+  {
+    "start": "00:28:53.700",
+    "end": "00:28:56.540",
+    "text": "We mentioned unit tests and so on,"
+  },
+  {
+    "start": "00:28:56.540",
+    "end": "00:28:59.120",
+    "text": "but there's also this other way of learning based,"
+  },
+  {
+    "start": "00:28:59.120",
+    "end": "00:29:03.400",
+    "text": "or outcome reward models, where they look into the outcome"
+  },
+  {
+    "start": "00:29:03.400",
+    "end": "00:29:06.040",
+    "text": "and say whether they're correct or not."
+  },
+  {
+    "start": "00:29:06.040",
+    "end": "00:29:08.480",
+    "text": "Of course, their accuracy, or quality"
+  },
+  {
+    "start": "00:29:08.480",
+    "end": "00:29:12.860",
+    "text": "can be limited, especially if we go to new domains."
+  },
+  {
+    "start": "00:29:12.860",
+    "end": "00:29:16.000",
+    "text": "But outcome-based reward model is another way"
+  },
+  {
+    "start": "00:29:16.000",
+    "end": "00:29:17.880",
+    "text": "that they look into the final answer"
+  },
+  {
+    "start": "00:29:17.880",
+    "end": "00:29:19.220",
+    "text": "and they generate a score."
+  },
+  {
+    "start": "00:29:19.220",
+    "end": "00:29:23.880",
+    "text": "Basically, these models are trained to give a reward based"
+  },
+  {
+    "start": "00:29:23.880",
+    "end": "00:29:25.340",
+    "text": "on an output."
+  },
+  {
+    "start": "00:29:25.340",
+    "end": "00:29:28.120",
+    "text": "Then there is also the process reward models."
+  },
+  {
+    "start": "00:29:28.120",
+    "end": "00:29:31.200",
+    "text": "So the difference between process and outcome"
+  },
+  {
+    "start": "00:29:31.200",
+    "end": "00:29:33.360",
+    "text": "is that process reward models are"
+  },
+  {
+    "start": "00:29:33.360",
+    "end": "00:29:38.940",
+    "text": "designed to give a score per step of the generated solution."
+  },
+  {
+    "start": "00:29:38.940",
+    "end": "00:29:40.780",
+    "text": "For example, we have a math problems,"
+  },
+  {
+    "start": "00:29:40.780",
+    "end": "00:29:43.560",
+    "text": "there are five steps that the model takes"
+  },
+  {
+    "start": "00:29:43.560",
+    "end": "00:29:48.200",
+    "text": "before generating a solution."
+  },
+  {
+    "start": "00:29:48.200",
+    "end": "00:29:51.560",
+    "text": "Process reward models, again, we learn about this more on Monday,"
+  },
+  {
+    "start": "00:29:51.560",
+    "end": "00:29:56.000",
+    "text": "I believe, are trained to give a score for the steps"
+  },
+  {
+    "start": "00:29:56.000",
+    "end": "00:29:58.960",
+    "text": "of the generation."
+  },
+  {
+    "start": "00:29:58.960",
+    "end": "00:30:02.520",
+    "text": "So that's the difference between the two."
+  },
+  {
+    "start": "00:30:02.520",
+    "end": "00:30:05.380",
+    "text": "Now, for best of n sampling with a verifier,"
+  },
+  {
+    "start": "00:30:05.380",
+    "end": "00:30:06.620",
+    "text": "again, the problem is easy."
+  },
+  {
+    "start": "00:30:06.620",
+    "end": "00:30:09.080",
+    "text": "We generate parallel samples, and then we"
+  },
+  {
+    "start": "00:30:09.080",
+    "end": "00:30:12.120",
+    "text": "can use an outcome-based reward model"
+  },
+  {
+    "start": "00:30:12.120",
+    "end": "00:30:15.480",
+    "text": "to see which one has the highest score"
+  },
+  {
+    "start": "00:30:15.480",
+    "end": "00:30:20.800",
+    "text": "and then take that as our answer."
+  },
+  {
+    "start": "00:30:20.800",
+    "end": "00:30:26.240",
+    "text": "Then there are other ways that we can bring these reward models"
+  },
+  {
+    "start": "00:30:26.240",
+    "end": "00:30:30.940",
+    "text": "into the processing, into our test time scaling framework."
+  },
+  {
+    "start": "00:30:30.940",
+    "end": "00:30:35.560",
+    "text": "For example, here, let's assume at each level of answering"
+  },
+  {
+    "start": "00:30:35.560",
+    "end": "00:30:40.000",
+    "text": "this question, we have a budget of four samples."
+  },
+  {
+    "start": "00:30:40.000",
+    "end": "00:30:43.080",
+    "text": "We take these four samples, and then here,"
+  },
+  {
+    "start": "00:30:43.080",
+    "end": "00:30:49.240",
+    "text": "use a Process Reward Model or PRM to in this case, we"
+  },
+  {
+    "start": "00:30:49.240",
+    "end": "00:30:53.380",
+    "text": "select the top two with the highest score from our PRM."
+  },
+  {
+    "start": "00:30:53.380",
+    "end": "00:31:00.440",
+    "text": "Then again, we sample from them and we continue."
+  },
+  {
+    "start": "00:31:00.440",
+    "end": "00:31:08.080",
+    "text": "And we can have a threshold for selecting the top two"
+  },
+  {
+    "start": "00:31:08.080",
+    "end": "00:31:11.550",
+    "text": "kind of responses in this case and expanding"
+  },
+  {
+    "start": "00:31:11.550",
+    "end": "00:31:12.570",
+    "text": "the tree from there."
+  },
+  {
+    "start": "00:31:12.570",
+    "end": "00:31:16.030",
+    "text": "So here, we are doing a beam search approach"
+  },
+  {
+    "start": "00:31:16.030",
+    "end": "00:31:19.030",
+    "text": "that uses the process reward model to guide"
+  },
+  {
+    "start": "00:31:19.030",
+    "end": "00:31:21.670",
+    "text": "how we are sampling our model."
+  },
+  {
+    "start": "00:31:21.670",
+    "end": "00:31:24.390",
+    "text": "Is that clear?"
+  },
+  {
+    "start": "00:31:24.390",
+    "end": "00:31:25.070",
+    "text": "Yes."
+  },
+  {
+    "start": "00:31:25.070",
+    "end": "00:31:27.350",
+    "text": "How do you choose the options?"
+  },
+  {
+    "start": "00:31:27.350",
+    "end": "00:31:28.850",
+    "text": "Based on the PRM score."
+  },
+  {
+    "start": "00:31:28.850",
+    "end": "00:31:33.230",
+    "text": "So the process reward model is trained to generate"
+  },
+  {
+    "start": "00:31:33.230",
+    "end": "00:31:36.150",
+    "text": "a score imagine between 0 and 1 based"
+  },
+  {
+    "start": "00:31:36.150",
+    "end": "00:31:41.730",
+    "text": "on the step given the question, and/or just the step alone."
+  },
+  {
+    "start": "00:31:44.600",
+    "end": "00:31:47.230",
+    "text": "Is the PRM fine tuned for that?"
+  },
+  {
+    "start": "00:31:47.230",
+    "end": "00:31:51.570",
+    "text": "Yes, PRMs are generally also fine tuned from language model."
+  },
+  {
+    "start": "00:31:51.570",
+    "end": "00:31:53.950",
+    "text": "As you can imagine, they would work better"
+  },
+  {
+    "start": "00:31:53.950",
+    "end": "00:32:01.830",
+    "text": "for in-domain types of tasks, so if you have a certain benchmark"
+  },
+  {
+    "start": "00:32:01.830",
+    "end": "00:32:04.030",
+    "text": "that you want to optimize for, of course, training"
+  },
+  {
+    "start": "00:32:04.030",
+    "end": "00:32:07.950",
+    "text": "a PRM on a subset of that task helps you"
+  },
+  {
+    "start": "00:32:07.950",
+    "end": "00:32:09.830",
+    "text": "with test time scaling on that task"
+  },
+  {
+    "start": "00:32:09.830",
+    "end": "00:32:12.030",
+    "text": "better than across new task."
+  },
+  {
+    "start": "00:32:12.030",
+    "end": "00:32:14.330",
+    "text": "But because they're language model based,"
+  },
+  {
+    "start": "00:32:14.330",
+    "end": "00:32:17.510",
+    "text": "they do exhibit some generalization across tasks"
+  },
+  {
+    "start": "00:32:17.510",
+    "end": "00:32:19.830",
+    "text": "as well."
+  },
+  {
+    "start": "00:32:19.830",
+    "end": "00:32:21.270",
+    "text": "Yes."
+  },
+  {
+    "start": "00:32:21.270",
+    "end": "00:32:24.910",
+    "text": "For the process reward, is this a reward"
+  },
+  {
+    "start": "00:32:24.910",
+    "end": "00:32:27.210",
+    "text": "that's being computed in practice?"
+  },
+  {
+    "start": "00:32:27.210",
+    "end": "00:32:31.970",
+    "text": "I don't know what the research is per token that is being done,"
+  },
+  {
+    "start": "00:32:31.970",
+    "end": "00:32:34.810",
+    "text": "or maybe blocks of tokens and then it's being computed."
+  },
+  {
+    "start": "00:32:34.810",
+    "end": "00:32:35.310",
+    "text": "Yes."
+  },
+  {
+    "start": "00:32:35.310",
+    "end": "00:32:36.490",
+    "text": "It's not per token."
+  },
+  {
+    "start": "00:32:36.490",
+    "end": "00:32:39.110",
+    "text": "It's per step."
+  },
+  {
+    "start": "00:32:39.110",
+    "end": "00:32:41.110",
+    "text": "And this is something we're going to learn about"
+  },
+  {
+    "start": "00:32:41.110",
+    "end": "00:32:42.210",
+    "text": "in future lectures."
+  },
+  {
+    "start": "00:32:42.210",
+    "end": "00:32:44.530",
+    "text": "Imagine, these are like a math problem,"
+  },
+  {
+    "start": "00:32:44.530",
+    "end": "00:32:48.110",
+    "text": "and then there are steps to answer that."
+  },
+  {
+    "start": "00:32:48.110",
+    "end": "00:32:50.630",
+    "text": "One way to do it is to have humans annotate"
+  },
+  {
+    "start": "00:32:50.630",
+    "end": "00:32:54.290",
+    "text": "the quality of each step like yes or no, this is good or bad,"
+  },
+  {
+    "start": "00:32:54.290",
+    "end": "00:32:57.230",
+    "text": "and then training the model based on each step, which"
+  },
+  {
+    "start": "00:32:57.230",
+    "end": "00:33:02.070",
+    "text": "could be like you can assume it's like one intellectually"
+  },
+  {
+    "start": "00:33:02.070",
+    "end": "00:33:05.910",
+    "text": "meaningful chunk of the result, or it could be you"
+  },
+  {
+    "start": "00:33:05.910",
+    "end": "00:33:08.320",
+    "text": "can define it as a sentence and so on."
+  },
+  {
+    "start": "00:33:13.940",
+    "end": "00:33:19.480",
+    "text": "And, of course, as it's very intuitive,"
+  },
+  {
+    "start": "00:33:19.480",
+    "end": "00:33:23.260",
+    "text": "if you combine the two of outcome based reward model"
+  },
+  {
+    "start": "00:33:23.260",
+    "end": "00:33:26.160",
+    "text": "and parallel based upon sequential revisions,"
+  },
+  {
+    "start": "00:33:26.160",
+    "end": "00:33:27.520",
+    "text": "you get better results."
+  },
+  {
+    "start": "00:33:27.520",
+    "end": "00:33:29.300",
+    "text": "This field is still there's a lot"
+  },
+  {
+    "start": "00:33:29.300",
+    "end": "00:33:36.240",
+    "text": "of unknown questions around this, but combining the two."
+  },
+  {
+    "start": "00:33:36.240",
+    "end": "00:33:39.140",
+    "text": "For example, one simple way to combine that"
+  },
+  {
+    "start": "00:33:39.140",
+    "end": "00:33:46.740",
+    "text": "is instead of one sample and revisions, you do two"
+  },
+  {
+    "start": "00:33:46.740",
+    "end": "00:33:49.200",
+    "text": "and you get to two final answers,"
+  },
+  {
+    "start": "00:33:49.200",
+    "end": "00:33:55.620",
+    "text": "and then you use the best one, either using your PRM or ORM"
+  },
+  {
+    "start": "00:33:55.620",
+    "end": "00:33:57.800",
+    "text": "to select how the two are."
+  },
+  {
+    "start": "00:33:57.800",
+    "end": "00:34:00.100",
+    "text": "But you're augmenting each parallel sample"
+  },
+  {
+    "start": "00:34:00.100",
+    "end": "00:34:02.380",
+    "text": "with these sequential revisions, and you"
+  },
+  {
+    "start": "00:34:02.380",
+    "end": "00:34:05.860",
+    "text": "can use a PRM to guide that search"
+  },
+  {
+    "start": "00:34:05.860",
+    "end": "00:34:08.380",
+    "text": "for each sequential revision."
+  },
+  {
+    "start": "00:34:08.380",
+    "end": "00:34:12.739",
+    "text": "Something that's interesting is that the PRM, there"
+  },
+  {
+    "start": "00:34:12.739",
+    "end": "00:34:16.480",
+    "text": "are many off the shelf PRM's that you can use for your tasks."
+  },
+  {
+    "start": "00:34:16.480",
+    "end": "00:34:18.980",
+    "text": "So you can go and say, take a pre-trained PRM"
+  },
+  {
+    "start": "00:34:18.980",
+    "end": "00:34:22.080",
+    "text": "and use that to guide the search for your own task."
+  },
+  {
+    "start": "00:34:22.080",
+    "end": "00:34:24.260",
+    "text": "And you can potentially find a PRM that"
+  },
+  {
+    "start": "00:34:24.260",
+    "end": "00:34:28.560",
+    "text": "is most relevant to the type of task that you're doing,"
+  },
+  {
+    "start": "00:34:28.560",
+    "end": "00:34:30.800",
+    "text": "and you want to do test time scaling on,"
+  },
+  {
+    "start": "00:34:30.800",
+    "end": "00:34:34.060",
+    "text": "or you can train your own PRM and ORM"
+  },
+  {
+    "start": "00:34:34.060",
+    "end": "00:34:36.719",
+    "text": "based on your own data as well."
+  },
+  {
+    "start": "00:34:40.139",
+    "end": "00:34:45.620",
+    "text": "So this paper looked into the math data set and something like"
+  },
+  {
+    "start": "00:34:45.620",
+    "end": "00:34:51.639",
+    "text": "12k train set 500 test questions, used the palm model."
+  },
+  {
+    "start": "00:34:51.639",
+    "end": "00:34:54.340",
+    "text": "And what was interesting here is that they defined"
+  },
+  {
+    "start": "00:34:54.340",
+    "end": "00:35:00.140",
+    "text": "a notion of difficulty for measuring"
+  },
+  {
+    "start": "00:35:00.140",
+    "end": "00:35:02.560",
+    "text": "these different scaling behaviors,"
+  },
+  {
+    "start": "00:35:02.560",
+    "end": "00:35:04.460",
+    "text": "and for that, they looked into the pass"
+  },
+  {
+    "start": "00:35:04.460",
+    "end": "00:35:08.820",
+    "text": "at one performance of the model on each problem."
+  },
+  {
+    "start": "00:35:08.820",
+    "end": "00:35:11.900",
+    "text": "And by just measuring that, they define OK, these"
+  },
+  {
+    "start": "00:35:11.900",
+    "end": "00:35:13.660",
+    "text": "are the problems that are hard, these"
+  },
+  {
+    "start": "00:35:13.660",
+    "end": "00:35:17.020",
+    "text": "are the problems based on how many of the generated"
+  },
+  {
+    "start": "00:35:17.020",
+    "end": "00:35:20.580",
+    "text": "answers are correct across a body of a number of samples."
+  },
+  {
+    "start": "00:35:20.580",
+    "end": "00:35:26.320",
+    "text": "They had five different bins for the complexity of the problem,"
+  },
+  {
+    "start": "00:35:26.320",
+    "end": "00:35:30.540",
+    "text": "and they did that, as we see to get some conclusion about what"
+  },
+  {
+    "start": "00:35:30.540",
+    "end": "00:35:36.380",
+    "text": "test time scaling works better for harder or easier task."
+  },
+  {
+    "start": "00:35:36.380",
+    "end": "00:35:39.660",
+    "text": "They also train their own process reward model,"
+  },
+  {
+    "start": "00:35:39.660",
+    "end": "00:35:43.680",
+    "text": "and even they fine tune a model for creating these revisions."
+  },
+  {
+    "start": "00:35:43.680",
+    "end": "00:35:48.200",
+    "text": "But right now, every model that we use pretty much it's capable."
+  },
+  {
+    "start": "00:35:48.200",
+    "end": "00:35:50.520",
+    "text": "It's just as long as it's instruction-tuned,"
+  },
+  {
+    "start": "00:35:50.520",
+    "end": "00:35:57.860",
+    "text": "is capable of doing revisions, if you ask the model to do so."
+  },
+  {
+    "start": "00:35:57.860",
+    "end": "00:36:00.980",
+    "text": "And there are some interesting observations here."
+  },
+  {
+    "start": "00:36:00.980",
+    "end": "00:36:04.170",
+    "text": "For example, here is the majority voting"
+  },
+  {
+    "start": "00:36:04.170",
+    "end": "00:36:05.650",
+    "text": "for these problems."
+  },
+  {
+    "start": "00:36:05.650",
+    "end": "00:36:08.010",
+    "text": "The accuracy as the generation budget"
+  },
+  {
+    "start": "00:36:08.010",
+    "end": "00:36:14.290",
+    "text": "increases, and then the purple one is the ORM one."
+  },
+  {
+    "start": "00:36:14.290",
+    "end": "00:36:21.230",
+    "text": "And the green one is the PRM one, and then the blue one,"
+  },
+  {
+    "start": "00:36:21.230",
+    "end": "00:36:25.210",
+    "text": "if you really try to optimize different ways of mixing"
+  },
+  {
+    "start": "00:36:25.210",
+    "end": "00:36:27.530",
+    "text": "and matching things."
+  },
+  {
+    "start": "00:36:27.530",
+    "end": "00:36:31.260",
+    "text": "And this area is the one that still is an open research"
+  },
+  {
+    "start": "00:36:31.260",
+    "end": "00:36:33.310",
+    "text": "like how do we do that?"
+  },
+  {
+    "start": "00:36:33.310",
+    "end": "00:36:36.610",
+    "text": "How do we go about mixing and matching revisions"
+  },
+  {
+    "start": "00:36:36.610",
+    "end": "00:36:41.087",
+    "text": "and parallel scaling to optimize the test time"
+  },
+  {
+    "start": "00:36:41.087",
+    "end": "00:36:42.670",
+    "text": "scaling because at the end of the day,"
+  },
+  {
+    "start": "00:36:42.670",
+    "end": "00:36:46.890",
+    "text": "we want for each accuracy, we want the minimum generation"
+  },
+  {
+    "start": "00:36:46.890",
+    "end": "00:36:49.650",
+    "text": "budget to hit that accuracy?"
+  },
+  {
+    "start": "00:36:49.650",
+    "end": "00:36:53.050",
+    "text": "And in a few slides ahead, we talk about one method"
+  },
+  {
+    "start": "00:36:53.050",
+    "end": "00:37:00.370",
+    "text": "to optimize this scaling and budget performance per budget."
+  },
+  {
+    "start": "00:37:00.370",
+    "end": "00:37:03.390",
+    "text": "They also looked into these different bins of difficulty,"
+  },
+  {
+    "start": "00:37:03.390",
+    "end": "00:37:06.770",
+    "text": "so number 5 is the most difficult questions"
+  },
+  {
+    "start": "00:37:06.770",
+    "end": "00:37:09.670",
+    "text": "because the accuracy is the lowest and number 1."
+  },
+  {
+    "start": "00:37:09.670",
+    "end": "00:37:11.570",
+    "text": "And then here on the right, there's"
+  },
+  {
+    "start": "00:37:11.570",
+    "end": "00:37:16.050",
+    "text": "these colors is the sequential to parallel ratio."
+  },
+  {
+    "start": "00:37:16.050",
+    "end": "00:37:20.970",
+    "text": "And while they're saying that OK for the easier problems,"
+  },
+  {
+    "start": "00:37:20.970",
+    "end": "00:37:26.530",
+    "text": "it seems like this darkest the darkest purple color achieves"
+  },
+  {
+    "start": "00:37:26.530",
+    "end": "00:37:29.170",
+    "text": "highest accuracy, and that's where"
+  },
+  {
+    "start": "00:37:29.170",
+    "end": "00:37:34.490",
+    "text": "we have a lot more sequential tokens compared to parallel."
+  },
+  {
+    "start": "00:37:34.490",
+    "end": "00:37:37.510",
+    "text": "When the problems are more difficult, and to some extent,"
+  },
+  {
+    "start": "00:37:37.510",
+    "end": "00:37:40.050",
+    "text": "those are some of the more interesting problems,"
+  },
+  {
+    "start": "00:37:40.050",
+    "end": "00:37:42.550",
+    "text": "this optimality is harder to say."
+  },
+  {
+    "start": "00:37:42.550",
+    "end": "00:37:47.690",
+    "text": "It's harder to say whether it's sequential or the ratio changes"
+  },
+  {
+    "start": "00:37:47.690",
+    "end": "00:37:51.650",
+    "text": "even from bucket four to bucket five on how"
+  },
+  {
+    "start": "00:37:51.650",
+    "end": "00:37:53.190",
+    "text": "you should allocate that."
+  },
+  {
+    "start": "00:37:57.250",
+    "end": "00:38:02.200",
+    "text": "Another observation from this paper was that--"
+  },
+  {
+    "start": "00:38:02.200",
+    "end": "00:38:04.320",
+    "text": "and this is still a work in progress,"
+  },
+  {
+    "start": "00:38:04.320",
+    "end": "00:38:08.280",
+    "text": "and I believe still the true observation as of today"
+  },
+  {
+    "start": "00:38:08.280",
+    "end": "00:38:11.900",
+    "text": "is that for easy and medium questions,"
+  },
+  {
+    "start": "00:38:11.900",
+    "end": "00:38:14.480",
+    "text": "it seems like additional test time"
+  },
+  {
+    "start": "00:38:14.480",
+    "end": "00:38:18.080",
+    "text": "compute can be more favorable than scaling"
+  },
+  {
+    "start": "00:38:18.080",
+    "end": "00:38:21.600",
+    "text": "pre-training of the model."
+  },
+  {
+    "start": "00:38:21.600",
+    "end": "00:38:24.000",
+    "text": "So here, we have these two."
+  },
+  {
+    "start": "00:38:24.000",
+    "end": "00:38:27.800",
+    "text": "The easy are the green, medium is blue,"
+  },
+  {
+    "start": "00:38:27.800",
+    "end": "00:38:31.020",
+    "text": "and orange is the hard questions."
+  },
+  {
+    "start": "00:38:31.020",
+    "end": "00:38:34.400",
+    "text": "It seems if we look into the ratio of inference tokens"
+  },
+  {
+    "start": "00:38:34.400",
+    "end": "00:38:46.400",
+    "text": "to pre-training tokens, it is positive for the easy and medium"
+  },
+  {
+    "start": "00:38:46.400",
+    "end": "00:38:48.780",
+    "text": "problem, but for the hardest problem,"
+  },
+  {
+    "start": "00:38:48.780",
+    "end": "00:38:52.800",
+    "text": "it seems larger models like a more pre-training,"
+  },
+  {
+    "start": "00:38:52.800",
+    "end": "00:38:56.200",
+    "text": "or larger models still do better if you"
+  },
+  {
+    "start": "00:38:56.200",
+    "end": "00:39:01.000",
+    "text": "are from a tokens optimized perspective."
+  },
+  {
+    "start": "00:39:01.000",
+    "end": "00:39:03.560",
+    "text": "And this is something that we have"
+  },
+  {
+    "start": "00:39:03.560",
+    "end": "00:39:07.480",
+    "text": "seen in many of our research in the lab or around the lab"
+  },
+  {
+    "start": "00:39:07.480",
+    "end": "00:39:09.320",
+    "text": "as well."
+  },
+  {
+    "start": "00:39:09.320",
+    "end": "00:39:14.760",
+    "text": "It seems like models, simpler open source models, or smaller"
+  },
+  {
+    "start": "00:39:14.760",
+    "end": "00:39:17.520",
+    "text": "models are becoming more and more useful"
+  },
+  {
+    "start": "00:39:17.520",
+    "end": "00:39:20.640",
+    "text": "as we take more test time compute, apply more test"
+  },
+  {
+    "start": "00:39:20.640",
+    "end": "00:39:22.160",
+    "text": "time compute on them."
+  },
+  {
+    "start": "00:39:22.160",
+    "end": "00:39:24.780",
+    "text": "But still, for the very, very hard problems,"
+  },
+  {
+    "start": "00:39:24.780",
+    "end": "00:39:27.520",
+    "text": "still the frontier models, which presumably"
+  },
+  {
+    "start": "00:39:27.520",
+    "end": "00:39:30.240",
+    "text": "use more pre-training and they are larger,"
+  },
+  {
+    "start": "00:39:30.240",
+    "end": "00:39:35.160",
+    "text": "they do better even if we had a whole lot like infinite budget"
+  },
+  {
+    "start": "00:39:35.160",
+    "end": "00:39:36.672",
+    "text": "for test time scaling."
+  },
+  {
+    "start": "00:39:36.672",
+    "end": "00:39:38.380",
+    "text": "Of course, we don't have infinite budget,"
+  },
+  {
+    "start": "00:39:38.380",
+    "end": "00:39:41.480",
+    "text": "but any reasonably large test time scale."
+  },
+  {
+    "start": "00:39:41.480",
+    "end": "00:39:42.826",
+    "text": "Yes."
+  },
+  {
+    "start": "00:39:42.826",
+    "end": "00:39:46.460",
+    "text": "In this case, how do you inference for this pre-training?"
+  },
+  {
+    "start": "00:39:46.460",
+    "end": "00:39:48.480",
+    "text": "Because it seems like for inference,"
+  },
+  {
+    "start": "00:39:48.480",
+    "end": "00:39:50.720",
+    "text": "you use it much like [INAUDIBLE],"
+  },
+  {
+    "start": "00:39:50.720",
+    "end": "00:39:53.558",
+    "text": "whereas for pre-training tokens, it's you use it once"
+  },
+  {
+    "start": "00:39:53.558",
+    "end": "00:39:54.600",
+    "text": "and you can use it twice."
+  },
+  {
+    "start": "00:39:54.600",
+    "end": "00:39:56.860",
+    "text": "Yes, that is true."
+  },
+  {
+    "start": "00:39:56.860",
+    "end": "00:40:00.480",
+    "text": "But in general, from a-- but this is still--"
+  },
+  {
+    "start": "00:40:00.480",
+    "end": "00:40:04.700",
+    "text": "so basically, yes, pre-training is done once,"
+  },
+  {
+    "start": "00:40:04.700",
+    "end": "00:40:08.900",
+    "text": "but scaling is every time we run the model."
+  },
+  {
+    "start": "00:40:17.630",
+    "end": "00:40:20.160",
+    "text": "But still, this is an interesting observation"
+  },
+  {
+    "start": "00:40:20.160",
+    "end": "00:40:24.360",
+    "text": "from the perspective of, are we done doing pre-training"
+  },
+  {
+    "start": "00:40:24.360",
+    "end": "00:40:27.880",
+    "text": "because we can just keep sampling from the models we"
+  },
+  {
+    "start": "00:40:27.880",
+    "end": "00:40:31.560",
+    "text": "have, or no, pre-training is still helpful"
+  },
+  {
+    "start": "00:40:31.560",
+    "end": "00:40:34.560",
+    "text": "and we should do more and more?"
+  },
+  {
+    "start": "00:40:34.560",
+    "end": "00:40:38.800",
+    "text": "Not everyone can pre-train a large model."
+  },
+  {
+    "start": "00:40:38.800",
+    "end": "00:40:44.120",
+    "text": "So even if pre-training was better"
+  },
+  {
+    "start": "00:40:44.120",
+    "end": "00:40:46.100",
+    "text": "than test time scaling in any scale,"
+  },
+  {
+    "start": "00:40:46.100",
+    "end": "00:40:49.320",
+    "text": "not everyone can do that because it's a very expensive process."
+  },
+  {
+    "start": "00:40:49.320",
+    "end": "00:40:52.760",
+    "text": "So this is very interesting that for many problems,"
+  },
+  {
+    "start": "00:40:52.760",
+    "end": "00:40:54.960",
+    "text": "we can do test time scaling, even"
+  },
+  {
+    "start": "00:40:54.960",
+    "end": "00:40:58.910",
+    "text": "if we do it every time for a new problem, because that's"
+  },
+  {
+    "start": "00:40:58.910",
+    "end": "00:40:59.810",
+    "text": "feasible."
+  },
+  {
+    "start": "00:40:59.810",
+    "end": "00:41:02.490",
+    "text": "But also, on the other hand, for the hardest problems,"
+  },
+  {
+    "start": "00:41:02.490",
+    "end": "00:41:04.210",
+    "text": "we still need to do pre-training,"
+  },
+  {
+    "start": "00:41:04.210",
+    "end": "00:41:07.110",
+    "text": "and better models still do better."
+  },
+  {
+    "start": "00:41:07.110",
+    "end": "00:41:07.970",
+    "text": "That makes sense."
+  },
+  {
+    "start": "00:41:07.970",
+    "end": "00:41:10.990",
+    "text": "I was just curious precisely in the graph"
+  },
+  {
+    "start": "00:41:10.990",
+    "end": "00:41:15.250",
+    "text": "when it says like the ratio is 1 for retraining of, for instance,"
+  },
+  {
+    "start": "00:41:15.250",
+    "end": "00:41:15.890",
+    "text": "retraining."
+  },
+  {
+    "start": "00:41:15.890",
+    "end": "00:41:19.110",
+    "text": "Does that mean that it's [INAUDIBLE] training,"
+  },
+  {
+    "start": "00:41:19.110",
+    "end": "00:41:23.030",
+    "text": "there was also one training used for a single task?"
+  },
+  {
+    "start": "00:41:23.030",
+    "end": "00:41:23.530",
+    "text": "No."
+  },
+  {
+    "start": "00:41:23.530",
+    "end": "00:41:25.490",
+    "text": "No, it's not exactly that."
+  },
+  {
+    "start": "00:41:25.490",
+    "end": "00:41:27.950",
+    "text": "It's more like some ratio of pre-training"
+  },
+  {
+    "start": "00:41:27.950",
+    "end": "00:41:29.530",
+    "text": "to inference compute."
+  },
+  {
+    "start": "00:41:29.530",
+    "end": "00:41:34.910",
+    "text": "It's not a one-to-one because it doesn't make sense in that case."
+  },
+  {
+    "start": "00:41:34.910",
+    "end": "00:41:37.950",
+    "text": "My question is, why is it that those larger models still"
+  },
+  {
+    "start": "00:41:37.950",
+    "end": "00:41:40.270",
+    "text": "count better?"
+  },
+  {
+    "start": "00:41:40.270",
+    "end": "00:41:43.710",
+    "text": "Can we take a smaller model and yet make it an expert"
+  },
+  {
+    "start": "00:41:43.710",
+    "end": "00:41:45.510",
+    "text": "on hot questions?"
+  },
+  {
+    "start": "00:41:45.510",
+    "end": "00:41:50.030",
+    "text": "You can always fine tune a model to become better"
+  },
+  {
+    "start": "00:41:50.030",
+    "end": "00:41:53.590",
+    "text": "on a certain set of questions, but we"
+  },
+  {
+    "start": "00:41:53.590",
+    "end": "00:41:57.390",
+    "text": "are talking about a more general perspective of let's have"
+  },
+  {
+    "start": "00:41:57.390",
+    "end": "00:41:59.870",
+    "text": "a whole lot of data that's general, not"
+  },
+  {
+    "start": "00:41:59.870",
+    "end": "00:42:08.510",
+    "text": "specific to a specific task and just compare the common recipes"
+  },
+  {
+    "start": "00:42:08.510",
+    "end": "00:42:10.530",
+    "text": "that we use for training models."
+  },
+  {
+    "start": "00:42:10.530",
+    "end": "00:42:13.190",
+    "text": "Let's just follow that and then see how much"
+  },
+  {
+    "start": "00:42:13.190",
+    "end": "00:42:14.930",
+    "text": "they do better at test time."
+  },
+  {
+    "start": "00:42:22.430",
+    "end": "00:42:25.470",
+    "text": "Any other questions?"
+  },
+  {
+    "start": "00:42:25.470",
+    "end": "00:42:30.910",
+    "text": "So maybe we discussed some of these already, but here"
+  },
+  {
+    "start": "00:42:30.910",
+    "end": "00:42:35.130",
+    "text": "are some more questions that I give you another two"
+  },
+  {
+    "start": "00:42:35.130",
+    "end": "00:42:36.930",
+    "text": "minutes, let me check the time."
+  },
+  {
+    "start": "00:42:36.930",
+    "end": "00:42:41.630",
+    "text": "Yes, we do have time, to think about this."
+  },
+  {
+    "start": "00:42:41.630",
+    "end": "00:42:45.750",
+    "text": "This helps you absorb some of the topics"
+  },
+  {
+    "start": "00:42:45.750",
+    "end": "00:42:50.730",
+    "text": "that we learned, or heard about in the previous slides,"
+  },
+  {
+    "start": "00:42:50.730",
+    "end": "00:42:53.600",
+    "text": "and then we discuss them in two minutes."
+  },
+  {
+    "start": "00:42:56.340",
+    "end": "00:42:59.340",
+    "text": "OK, should we start?"
+  },
+  {
+    "start": "00:42:59.340",
+    "end": "00:43:01.500",
+    "text": "Anyone wants to add any comments here,"
+  },
+  {
+    "start": "00:43:01.500",
+    "end": "00:43:06.020",
+    "text": "or any questions you might have?"
+  },
+  {
+    "start": "00:43:06.020",
+    "end": "00:43:07.340",
+    "text": "Yes."
+  },
+  {
+    "start": "00:43:07.340",
+    "end": "00:43:12.660",
+    "text": "So do you try sequential and try too-- what about tree search?"
+  },
+  {
+    "start": "00:43:12.660",
+    "end": "00:43:16.220",
+    "text": "And in that case, you're doing the--"
+  },
+  {
+    "start": "00:43:16.220",
+    "end": "00:43:17.640",
+    "text": "You're mixing the both."
+  },
+  {
+    "start": "00:43:17.640",
+    "end": "00:43:19.360",
+    "text": "Yeah, you're kind of mixing, right?"
+  },
+  {
+    "start": "00:43:19.360",
+    "end": "00:43:19.860",
+    "text": "Yeah."
+  },
+  {
+    "start": "00:43:19.860",
+    "end": "00:43:22.000",
+    "text": "There is no universal answer that can be there."
+  },
+  {
+    "start": "00:43:22.000",
+    "end": "00:43:26.100",
+    "text": "But the general sentiment was that does better,"
+  },
+  {
+    "start": "00:43:26.100",
+    "end": "00:43:29.540",
+    "text": "like some sort of combining the two than doing--"
+  },
+  {
+    "start": "00:43:29.540",
+    "end": "00:43:33.180",
+    "text": "[INAUDIBLE] you do, so reduce a lot of the compute that"
+  },
+  {
+    "start": "00:43:33.180",
+    "end": "00:43:35.980",
+    "text": "you're doing or reuse [INAUDIBLE] that you're doing"
+  },
+  {
+    "start": "00:43:35.980",
+    "end": "00:43:37.300",
+    "text": "because it's a tree--"
+  },
+  {
+    "start": "00:43:37.300",
+    "end": "00:43:39.620",
+    "text": "Yes, yes."
+  },
+  {
+    "start": "00:43:39.620",
+    "end": "00:43:43.300",
+    "text": "That is when we discussed the beam search stuff and the PRM,"
+  },
+  {
+    "start": "00:43:43.300",
+    "end": "00:43:49.620",
+    "text": "like bringing a PRM to cut the tree at each level"
+  },
+  {
+    "start": "00:43:49.620",
+    "end": "00:43:53.920",
+    "text": "and explore only the more promising branches."
+  },
+  {
+    "start": "00:43:57.620",
+    "end": "00:43:58.780",
+    "text": "Anything else?"
+  },
+  {
+    "start": "00:43:58.780",
+    "end": "00:43:59.420",
+    "text": "Yes."
+  },
+  {
+    "start": "00:43:59.420",
+    "end": "00:44:06.560",
+    "text": "[INAUDIBLE] as the thinking that that's the easier problem,"
+  },
+  {
+    "start": "00:44:06.560",
+    "end": "00:44:08.860",
+    "text": "the more perhaps you have towards the success"
+  },
+  {
+    "start": "00:44:08.860",
+    "end": "00:44:09.800",
+    "text": "of solving it."
+  },
+  {
+    "start": "00:44:09.800",
+    "end": "00:44:13.380",
+    "text": "Therefore, it could be more sequential [INAUDIBLE]"
+  },
+  {
+    "start": "00:44:13.380",
+    "end": "00:44:16.100",
+    "text": "problem because you would-- there are few students solving,"
+  },
+  {
+    "start": "00:44:16.100",
+    "end": "00:44:18.980",
+    "text": "so you would need many parallel process"
+  },
+  {
+    "start": "00:44:18.980",
+    "end": "00:44:22.500",
+    "text": "to find at least one viable solution."
+  },
+  {
+    "start": "00:44:22.500",
+    "end": "00:44:24.700",
+    "text": "And we started thinking a little bit also"
+  },
+  {
+    "start": "00:44:24.700",
+    "end": "00:44:26.880",
+    "text": "like to do this in a chain of thoughts kind of way,"
+  },
+  {
+    "start": "00:44:26.880",
+    "end": "00:44:28.800",
+    "text": "where you are doing a chain of thought,"
+  },
+  {
+    "start": "00:44:28.800",
+    "end": "00:44:31.580",
+    "text": "but verifying through all the steps into our chain of thoughts"
+  },
+  {
+    "start": "00:44:31.580",
+    "end": "00:44:34.220",
+    "text": "instead, and then pruning from these branches"
+  },
+  {
+    "start": "00:44:34.220",
+    "end": "00:44:37.780",
+    "text": "that are violating anything."
+  },
+  {
+    "start": "00:44:37.780",
+    "end": "00:44:38.340",
+    "text": "Yeah."
+  },
+  {
+    "start": "00:44:38.340",
+    "end": "00:44:41.940",
+    "text": "So in terms of sequential, you're saying that for easier"
+  },
+  {
+    "start": "00:44:41.940",
+    "end": "00:44:45.200",
+    "text": "ones, easier problems-- for harder problems,"
+  },
+  {
+    "start": "00:44:45.200",
+    "end": "00:44:48.620",
+    "text": "you mean you need more exploration potentially"
+  },
+  {
+    "start": "00:44:48.620",
+    "end": "00:44:49.660",
+    "text": "for easier--"
+  },
+  {
+    "start": "00:44:49.660",
+    "end": "00:44:51.740",
+    "text": "To the correct answer."
+  },
+  {
+    "start": "00:44:51.740",
+    "end": "00:44:57.980",
+    "text": "Or for easier problems, because like any kind of path"
+  },
+  {
+    "start": "00:44:57.980",
+    "end": "00:44:59.760",
+    "text": "might lead us to the correct answer,"
+  },
+  {
+    "start": "00:44:59.760",
+    "end": "00:45:03.460",
+    "text": "we might not need to explore different parallel solutions."
+  },
+  {
+    "start": "00:45:03.460",
+    "end": "00:45:07.600",
+    "text": "Yeah, that is an intuitive kind of way of thinking about this."
+  },
+  {
+    "start": "00:45:10.900",
+    "end": "00:45:12.320",
+    "text": "Any other thoughts?"
+  },
+  {
+    "start": "00:45:19.060",
+    "end": "00:45:22.220",
+    "text": "In general, this is a very interesting kind"
+  },
+  {
+    "start": "00:45:22.220",
+    "end": "00:45:23.760",
+    "text": "of problem to think about."
+  },
+  {
+    "start": "00:45:23.760",
+    "end": "00:45:27.500",
+    "text": "How do you-- let's assume that these tokens that you generate"
+  },
+  {
+    "start": "00:45:27.500",
+    "end": "00:45:30.760",
+    "text": "is like a knob that you have to increase problem,"
+  },
+  {
+    "start": "00:45:30.760",
+    "end": "00:45:34.100",
+    "text": "the quality of the responses, how do you allocate this knob?"
+  },
+  {
+    "start": "00:45:34.100",
+    "end": "00:45:38.700",
+    "text": "And how do you elicit these generations from the model?"
+  },
+  {
+    "start": "00:45:38.700",
+    "end": "00:45:40.680",
+    "text": "So let's think about in the following,"
+  },
+  {
+    "start": "00:45:40.680",
+    "end": "00:45:43.700",
+    "text": "I'm going to talk about one way to optimize"
+  },
+  {
+    "start": "00:45:43.700",
+    "end": "00:45:47.830",
+    "text": "these kind of test time scaling to generate optimized answers."
+  },
+  {
+    "start": "00:45:47.830",
+    "end": "00:45:51.930",
+    "text": "And that is the Archon paper, an architecture search framework"
+  },
+  {
+    "start": "00:45:51.930",
+    "end": "00:45:55.210",
+    "text": "for inference time scaling."
+  },
+  {
+    "start": "00:45:55.210",
+    "end": "00:45:57.610",
+    "text": "So the problem state-- and your TA"
+  },
+  {
+    "start": "00:45:57.610",
+    "end": "00:46:00.810",
+    "text": "is one of the co-authors of this work."
+  },
+  {
+    "start": "00:46:00.810",
+    "end": "00:46:03.650",
+    "text": "So the problem in this paper is that, again, we"
+  },
+  {
+    "start": "00:46:03.650",
+    "end": "00:46:07.650",
+    "text": "are interested to see how we can mix and match"
+  },
+  {
+    "start": "00:46:07.650",
+    "end": "00:46:10.050",
+    "text": "different inference time scaling methods to build"
+  },
+  {
+    "start": "00:46:10.050",
+    "end": "00:46:14.890",
+    "text": "the optimize the frontier of capability or correctness"
+  },
+  {
+    "start": "00:46:14.890",
+    "end": "00:46:18.530",
+    "text": "versus cost."
+  },
+  {
+    "start": "00:46:18.530",
+    "end": "00:46:20.870",
+    "text": "And the other thing that--"
+  },
+  {
+    "start": "00:46:23.530",
+    "end": "00:46:26.650",
+    "text": "again, all of these questions basically saying the same thing"
+  },
+  {
+    "start": "00:46:26.650",
+    "end": "00:46:29.630",
+    "text": "that how we can optimize assigning inference"
+  },
+  {
+    "start": "00:46:29.630",
+    "end": "00:46:32.450",
+    "text": "compute two different tasks."
+  },
+  {
+    "start": "00:46:32.450",
+    "end": "00:46:37.090",
+    "text": "And basically, design mechanisms that gets us to the high quality"
+  },
+  {
+    "start": "00:46:37.090",
+    "end": "00:46:43.410",
+    "text": "answers while not wasting too many tokens and generations."
+  },
+  {
+    "start": "00:46:43.410",
+    "end": "00:46:46.830",
+    "text": "So here is the arc-- like in this case,"
+  },
+  {
+    "start": "00:46:46.830",
+    "end": "00:46:49.970",
+    "text": "we thought of inference scaling in this project"
+  },
+  {
+    "start": "00:46:49.970",
+    "end": "00:46:56.170",
+    "text": "as an inference architecture design problem."
+  },
+  {
+    "start": "00:46:56.170",
+    "end": "00:47:00.430",
+    "text": "So here is how the Archon framework works."
+  },
+  {
+    "start": "00:47:00.430",
+    "end": "00:47:03.610",
+    "text": "On the input side, we had a set of target benchmarks"
+  },
+  {
+    "start": "00:47:03.610",
+    "end": "00:47:06.630",
+    "text": "that we wanted to get good results on these benchmarks."
+  },
+  {
+    "start": "00:47:06.630",
+    "end": "00:47:09.210",
+    "text": "So these are the benchmarks we are optimizing for."
+  },
+  {
+    "start": "00:47:09.210",
+    "end": "00:47:11.930",
+    "text": "There is an inference called budget."
+  },
+  {
+    "start": "00:47:11.930",
+    "end": "00:47:14.730",
+    "text": "And then there's also a set of available LLMs,"
+  },
+  {
+    "start": "00:47:14.730",
+    "end": "00:47:18.410",
+    "text": "because we can always mix and match different models also"
+  },
+  {
+    "start": "00:47:18.410",
+    "end": "00:47:23.330",
+    "text": "to get to a correct answer for a input question."
+  },
+  {
+    "start": "00:47:23.330",
+    "end": "00:47:25.770",
+    "text": "And then we have a set of inference time techniques, which"
+  },
+  {
+    "start": "00:47:25.770",
+    "end": "00:47:29.130",
+    "text": "I'm going to describe in the following slides."
+  },
+  {
+    "start": "00:47:29.130",
+    "end": "00:47:33.970",
+    "text": "And then we designed this optimizer."
+  },
+  {
+    "start": "00:47:33.970",
+    "end": "00:47:35.090",
+    "text": "It's called itest."
+  },
+  {
+    "start": "00:47:35.090",
+    "end": "00:47:40.290",
+    "text": "It's inference time architecture search that basically tells us"
+  },
+  {
+    "start": "00:47:40.290",
+    "end": "00:47:43.050",
+    "text": "how to put together these different models"
+  },
+  {
+    "start": "00:47:43.050",
+    "end": "00:47:45.660",
+    "text": "and different inference time techniques together,"
+  },
+  {
+    "start": "00:47:45.660",
+    "end": "00:47:49.100",
+    "text": "whether it's parallel sampling, sequential, and all that,"
+  },
+  {
+    "start": "00:47:49.100",
+    "end": "00:47:53.360",
+    "text": "in order to get high-quality results given"
+  },
+  {
+    "start": "00:47:53.360",
+    "end": "00:47:56.480",
+    "text": "the budget, the inference called budget that we have-- how"
+  },
+  {
+    "start": "00:47:56.480",
+    "end": "00:48:00.180",
+    "text": "to optimize the quality of results based on that."
+  },
+  {
+    "start": "00:48:00.180",
+    "end": "00:48:02.280",
+    "text": "And then the output is this architecture"
+  },
+  {
+    "start": "00:48:02.280",
+    "end": "00:48:04.680",
+    "text": "that mixes and matches these different techniques"
+  },
+  {
+    "start": "00:48:04.680",
+    "end": "00:48:08.240",
+    "text": "and models together."
+  },
+  {
+    "start": "00:48:08.240",
+    "end": "00:48:11.560",
+    "text": "So let's take a look at different inference time"
+  },
+  {
+    "start": "00:48:11.560",
+    "end": "00:48:12.880",
+    "text": "operations."
+  },
+  {
+    "start": "00:48:12.880",
+    "end": "00:48:16.180",
+    "text": "So first, we have the general-- we call it the generation,"
+  },
+  {
+    "start": "00:48:16.180",
+    "end": "00:48:24.120",
+    "text": "but this is basically just sampling from the model."
+  },
+  {
+    "start": "00:48:24.120",
+    "end": "00:48:28.460",
+    "text": "And this can be part of the repeated sampling approach."
+  },
+  {
+    "start": "00:48:28.460",
+    "end": "00:48:31.000",
+    "text": "So if we generate n--"
+  },
+  {
+    "start": "00:48:31.000",
+    "end": "00:48:33.560",
+    "text": "we use n generations at a time, that"
+  },
+  {
+    "start": "00:48:33.560",
+    "end": "00:48:37.240",
+    "text": "means we have generated n different responses to our input"
+  },
+  {
+    "start": "00:48:37.240",
+    "end": "00:48:38.100",
+    "text": "question."
+  },
+  {
+    "start": "00:48:38.100",
+    "end": "00:48:41.560",
+    "text": "So that's one type of inference time scaling."
+  },
+  {
+    "start": "00:48:41.560",
+    "end": "00:48:45.600",
+    "text": "Another one is fusion, which was surprisingly a very effective"
+  },
+  {
+    "start": "00:48:45.600",
+    "end": "00:48:46.440",
+    "text": "method."
+  },
+  {
+    "start": "00:48:46.440",
+    "end": "00:48:53.200",
+    "text": "So fusion is, let's say, we have K different responses,"
+  },
+  {
+    "start": "00:48:53.200",
+    "end": "00:48:56.080",
+    "text": "and we want to generate one output response out"
+  },
+  {
+    "start": "00:48:56.080",
+    "end": "00:49:02.840",
+    "text": "of these K. Fusion takes an LLM and asks"
+  },
+  {
+    "start": "00:49:02.840",
+    "end": "00:49:06.700",
+    "text": "an LLM the same exact question that I just said."
+  },
+  {
+    "start": "00:49:06.700",
+    "end": "00:49:09.500",
+    "text": "Basically, it says, here's the input question."
+  },
+  {
+    "start": "00:49:09.500",
+    "end": "00:49:13.760",
+    "text": "Here are K different responses to this input question."
+  },
+  {
+    "start": "00:49:13.760",
+    "end": "00:49:20.000",
+    "text": "Given all of this, generate or synthesize one output response"
+  },
+  {
+    "start": "00:49:20.000",
+    "end": "00:49:21.580",
+    "text": "for the input question."
+  },
+  {
+    "start": "00:49:21.580",
+    "end": "00:49:25.800",
+    "text": "Basically, we are showing all of the K generations to the model,"
+  },
+  {
+    "start": "00:49:25.800",
+    "end": "00:49:30.840",
+    "text": "such that the LLM can generate an output answer while being"
+  },
+  {
+    "start": "00:49:30.840",
+    "end": "00:49:38.680",
+    "text": "aware of all the possible ways that this question is answered."
+  },
+  {
+    "start": "00:49:38.680",
+    "end": "00:49:44.340",
+    "text": "And this is-- it goes under the category of sequential update."
+  },
+  {
+    "start": "00:49:44.340",
+    "end": "00:49:46.800",
+    "text": "We have this parallel samples, but then we"
+  },
+  {
+    "start": "00:49:46.800",
+    "end": "00:49:49.560",
+    "text": "are kind of fusing them into one answer."
+  },
+  {
+    "start": "00:49:49.560",
+    "end": "00:49:56.040",
+    "text": "Then there is the critic, which basically,"
+  },
+  {
+    "start": "00:49:56.040",
+    "end": "00:49:59.000",
+    "text": "for any given response, we can ask a model"
+  },
+  {
+    "start": "00:49:59.000",
+    "end": "00:50:04.160",
+    "text": "to generate or describe the weaknesses"
+  },
+  {
+    "start": "00:50:04.160",
+    "end": "00:50:06.680",
+    "text": "or strengths of these response."
+  },
+  {
+    "start": "00:50:06.680",
+    "end": "00:50:12.280",
+    "text": "And that could be one kind of inference scaling action."
+  },
+  {
+    "start": "00:50:12.280",
+    "end": "00:50:14.000",
+    "text": "And then we have the ranker."
+  },
+  {
+    "start": "00:50:14.000",
+    "end": "00:50:16.320",
+    "text": "This is-- again, these are all prompting based"
+  },
+  {
+    "start": "00:50:16.320",
+    "end": "00:50:18.220",
+    "text": "optimization for the model."
+  },
+  {
+    "start": "00:50:18.220",
+    "end": "00:50:21.960",
+    "text": "We haven't trained the model to do this specific test time"
+  },
+  {
+    "start": "00:50:21.960",
+    "end": "00:50:22.820",
+    "text": "scaling task."
+  },
+  {
+    "start": "00:50:22.820",
+    "end": "00:50:27.440",
+    "text": "We just ask the model in the instruction prompt that,"
+  },
+  {
+    "start": "00:50:27.440",
+    "end": "00:50:29.920",
+    "text": "can you rank these generated responses"
+  },
+  {
+    "start": "00:50:29.920",
+    "end": "00:50:34.660",
+    "text": "from the previous step based on their quality?"
+  },
+  {
+    "start": "00:50:38.320",
+    "end": "00:50:41.390",
+    "text": "And then the verifiers generates the-- returns"
+  },
+  {
+    "start": "00:50:41.390",
+    "end": "00:50:45.950",
+    "text": "the response while also talk about the reasoning of why"
+  },
+  {
+    "start": "00:50:45.950",
+    "end": "00:50:52.630",
+    "text": "it came to this kind of way to score a certain answer."
+  },
+  {
+    "start": "00:50:52.630",
+    "end": "00:50:55.610",
+    "text": "I'll get to the next two unit tests"
+  },
+  {
+    "start": "00:50:55.610",
+    "end": "00:50:57.370",
+    "text": "generation and evaluation in a bit."
+  },
+  {
+    "start": "00:50:57.370",
+    "end": "00:51:00.910",
+    "text": "But just to show you how effective these different"
+  },
+  {
+    "start": "00:51:00.910",
+    "end": "00:51:03.510",
+    "text": "inference time scaling techniques are,"
+  },
+  {
+    "start": "00:51:03.510",
+    "end": "00:51:13.890",
+    "text": "let's take a look at this win rate for what tasks--"
+  },
+  {
+    "start": "00:51:13.890",
+    "end": "00:51:15.630",
+    "text": "we don't have the task here."
+  },
+  {
+    "start": "00:51:15.630",
+    "end": "00:51:19.870",
+    "text": "But it's one of the task of one of these benchmarks"
+  },
+  {
+    "start": "00:51:19.870",
+    "end": "00:51:23.330",
+    "text": "that I don't know if you remember the task."
+  },
+  {
+    "start": "00:51:23.330",
+    "end": "00:51:23.830",
+    "text": "Yeah."
+  },
+  {
+    "start": "00:51:26.390",
+    "end": "00:51:31.190",
+    "text": "Some question answering reasoning benchmark."
+  },
+  {
+    "start": "00:51:31.190",
+    "end": "00:51:34.130",
+    "text": "So here, let's take a look at how these things work."
+  },
+  {
+    "start": "00:51:34.130",
+    "end": "00:51:36.830",
+    "text": "So first, we have--"
+  },
+  {
+    "start": "00:51:36.830",
+    "end": "00:51:41.430",
+    "text": "let's say, we have a number of repeated samples from the model."
+  },
+  {
+    "start": "00:51:41.430",
+    "end": "00:51:44.570",
+    "text": "It goes from 1 to 10 on the left side."
+  },
+  {
+    "start": "00:51:44.570",
+    "end": "00:51:46.990",
+    "text": "Let's focus on the graph on the left side."
+  },
+  {
+    "start": "00:51:46.990",
+    "end": "00:51:51.390",
+    "text": "And then the orange one is the kind of worst possible way"
+  },
+  {
+    "start": "00:51:51.390",
+    "end": "00:51:52.210",
+    "text": "of approaching it."
+  },
+  {
+    "start": "00:51:52.210",
+    "end": "00:51:55.150",
+    "text": "We just randomly select one and look"
+  },
+  {
+    "start": "00:51:55.150",
+    "end": "00:51:59.670",
+    "text": "at the quality and the correctness of this response."
+  },
+  {
+    "start": "00:51:59.670",
+    "end": "00:52:04.650",
+    "text": "The green one is when we use the model to rank them,"
+  },
+  {
+    "start": "00:52:04.650",
+    "end": "00:52:07.870",
+    "text": "to rank the responses, and we select the top one ranked"
+  },
+  {
+    "start": "00:52:07.870",
+    "end": "00:52:13.030",
+    "text": "by the model and report that."
+  },
+  {
+    "start": "00:52:13.030",
+    "end": "00:52:16.950",
+    "text": "That already does better than the orange one."
+  },
+  {
+    "start": "00:52:16.950",
+    "end": "00:52:20.650",
+    "text": "The blue one is Oracle selection,"
+  },
+  {
+    "start": "00:52:20.650",
+    "end": "00:52:23.350",
+    "text": "meaning let's assume we are not mixing"
+  },
+  {
+    "start": "00:52:23.350",
+    "end": "00:52:26.190",
+    "text": "these responses in any way."
+  },
+  {
+    "start": "00:52:26.190",
+    "end": "00:52:30.110",
+    "text": "We just select the best one generated."
+  },
+  {
+    "start": "00:52:30.110",
+    "end": "00:52:31.990",
+    "text": "Let's say, we have an Oracle verifier"
+  },
+  {
+    "start": "00:52:31.990",
+    "end": "00:52:34.590",
+    "text": "that can tell us which one of these is correct."
+  },
+  {
+    "start": "00:52:34.590",
+    "end": "00:52:37.060",
+    "text": "And that obviously does better than just"
+  },
+  {
+    "start": "00:52:37.060",
+    "end": "00:52:41.620",
+    "text": "asking the model to rank them because it's an Oracle verifier."
+  },
+  {
+    "start": "00:52:41.620",
+    "end": "00:52:44.100",
+    "text": "And then we get to the red one, which is"
+  },
+  {
+    "start": "00:52:44.100",
+    "end": "00:52:46.700",
+    "text": "where when we use the fusion."
+  },
+  {
+    "start": "00:52:46.700",
+    "end": "00:52:52.060",
+    "text": "So basically, for each point here, let's say, we are at 5,"
+  },
+  {
+    "start": "00:52:52.060",
+    "end": "00:52:55.260",
+    "text": "the red data point is basically we have given these five"
+  },
+  {
+    "start": "00:52:55.260",
+    "end": "00:52:59.060",
+    "text": "responses to the model and ask the model to synthesize"
+  },
+  {
+    "start": "00:52:59.060",
+    "end": "00:53:03.480",
+    "text": "one answer, one final answer, given all this information."
+  },
+  {
+    "start": "00:53:03.480",
+    "end": "00:53:06.940",
+    "text": "And it's so interesting, and this paradigm is so powerful"
+  },
+  {
+    "start": "00:53:06.940",
+    "end": "00:53:11.060",
+    "text": "that that can on its own improve the quality of responses"
+  },
+  {
+    "start": "00:53:11.060",
+    "end": "00:53:15.260",
+    "text": "over Oracle selection."
+  },
+  {
+    "start": "00:53:15.260",
+    "end": "00:53:20.460",
+    "text": "And then finally, the purple one is where we--"
+  },
+  {
+    "start": "00:53:20.460",
+    "end": "00:53:27.320",
+    "text": "instead of fusing all the responses,"
+  },
+  {
+    "start": "00:53:27.320",
+    "end": "00:53:33.300",
+    "text": "we first selected the top five, and then we"
+  },
+  {
+    "start": "00:53:33.300",
+    "end": "00:53:34.840",
+    "text": "went about fusing them."
+  },
+  {
+    "start": "00:53:34.840",
+    "end": "00:53:37.900",
+    "text": "So it seems like some sort of a filtering of the two"
+  },
+  {
+    "start": "00:53:37.900",
+    "end": "00:53:41.220",
+    "text": "does better."
+  },
+  {
+    "start": "00:53:41.220",
+    "end": "00:53:44.780",
+    "text": "Now on the right side, we are doing a different experiment,"
+  },
+  {
+    "start": "00:53:44.780",
+    "end": "00:53:47.292",
+    "text": "and that is we are--"
+  },
+  {
+    "start": "00:53:47.292",
+    "end": "00:53:48.000",
+    "text": "on the left side."
+  },
+  {
+    "start": "00:53:48.000",
+    "end": "00:53:50.720",
+    "text": "We had only one model generating everything."
+  },
+  {
+    "start": "00:53:50.720",
+    "end": "00:53:52.540",
+    "text": "On the left side, we had-- we were"
+  },
+  {
+    "start": "00:53:52.540",
+    "end": "00:53:54.520",
+    "text": "using-- we were adding models."
+  },
+  {
+    "start": "00:53:54.520",
+    "end": "00:53:57.860",
+    "text": "So first one is just one model generating one answer,"
+  },
+  {
+    "start": "00:53:57.860",
+    "end": "00:54:00.540",
+    "text": "two the baseline is two different models generating"
+  },
+  {
+    "start": "00:54:00.540",
+    "end": "00:54:03.520",
+    "text": "one answer, and 10 is 10 different models,"
+  },
+  {
+    "start": "00:54:03.520",
+    "end": "00:54:05.220",
+    "text": "each generating one answer."
+  },
+  {
+    "start": "00:54:05.220",
+    "end": "00:54:09.300",
+    "text": "And we see that, of course, the random result"
+  },
+  {
+    "start": "00:54:09.300",
+    "end": "00:54:12.980",
+    "text": "becomes worse because the model we looked on the left"
+  },
+  {
+    "start": "00:54:12.980",
+    "end": "00:54:17.340",
+    "text": "was I think it was among the better models in this ensemble."
+  },
+  {
+    "start": "00:54:17.340",
+    "end": "00:54:22.540",
+    "text": "But we still see the same trend, even if these responses"
+  },
+  {
+    "start": "00:54:22.540",
+    "end": "00:54:25.980",
+    "text": "are coming from different models, basically the same trend"
+  },
+  {
+    "start": "00:54:25.980",
+    "end": "00:54:29.580",
+    "text": "of how these all follow each other."
+  },
+  {
+    "start": "00:54:29.580",
+    "end": "00:54:30.620",
+    "text": "Yes."
+  },
+  {
+    "start": "00:54:30.620",
+    "end": "00:54:32.580",
+    "text": "Which model is fusing?"
+  },
+  {
+    "start": "00:54:32.580",
+    "end": "00:54:34.700",
+    "text": "If you're using 10 different models,"
+  },
+  {
+    "start": "00:54:34.700",
+    "end": "00:54:38.420",
+    "text": "you're asking somebody else to rank or fuse your--"
+  },
+  {
+    "start": "00:54:38.420",
+    "end": "00:54:39.980",
+    "text": "I think it's the model number one"
+  },
+  {
+    "start": "00:54:39.980",
+    "end": "00:54:41.820",
+    "text": "in this case, the same [INAUDIBLE] that"
+  },
+  {
+    "start": "00:54:41.820",
+    "end": "00:54:43.460",
+    "text": "was in all of those."
+  },
+  {
+    "start": "00:54:43.460",
+    "end": "00:54:47.020",
+    "text": "And this was the way we created the ensemble was first"
+  },
+  {
+    "start": "00:54:47.020",
+    "end": "00:54:49.620",
+    "text": "with the best model and then added the second best model"
+  },
+  {
+    "start": "00:54:49.620",
+    "end": "00:54:50.240",
+    "text": "and so on."
+  },
+  {
+    "start": "00:54:56.220",
+    "end": "00:54:58.780",
+    "text": "Now let's take a look at a couple"
+  },
+  {
+    "start": "00:54:58.780",
+    "end": "00:55:01.440",
+    "text": "other inference time techniques."
+  },
+  {
+    "start": "00:55:01.440",
+    "end": "00:55:04.600",
+    "text": "And that is unit test generation and evaluation."
+  },
+  {
+    "start": "00:55:04.600",
+    "end": "00:55:09.180",
+    "text": "I think one of you was mentioning something like this"
+  },
+  {
+    "start": "00:55:09.180",
+    "end": "00:55:11.980",
+    "text": "earlier as well, that where we can ask the model"
+  },
+  {
+    "start": "00:55:11.980",
+    "end": "00:55:14.340",
+    "text": "to generate these unit tests, say"
+  },
+  {
+    "start": "00:55:14.340",
+    "end": "00:55:18.700",
+    "text": "when it gets to coding task or math, math problem-solving"
+  },
+  {
+    "start": "00:55:18.700",
+    "end": "00:55:22.020",
+    "text": "or other reasoning tasks."
+  },
+  {
+    "start": "00:55:22.020",
+    "end": "00:55:24.720",
+    "text": "And the unit test evaluation is even crazier."
+  },
+  {
+    "start": "00:55:24.720",
+    "end": "00:55:27.600",
+    "text": "Like instead of running the unit test,"
+  },
+  {
+    "start": "00:55:27.600",
+    "end": "00:55:32.570",
+    "text": "you're asking the model to evaluate a generated answer"
+  },
+  {
+    "start": "00:55:32.570",
+    "end": "00:55:36.410",
+    "text": "against a unit test."
+  },
+  {
+    "start": "00:55:36.410",
+    "end": "00:55:40.570",
+    "text": "For example, here is a prompt check"
+  },
+  {
+    "start": "00:55:40.570",
+    "end": "00:55:43.210",
+    "text": "for-- so the coding problem in this case"
+  },
+  {
+    "start": "00:55:43.210",
+    "end": "00:55:47.410",
+    "text": "is check for balanceness of round brackets in an input"
+  },
+  {
+    "start": "00:55:47.410",
+    "end": "00:55:47.910",
+    "text": "string."
+  },
+  {
+    "start": "00:55:47.910",
+    "end": "00:55:49.630",
+    "text": "That's a coding question."
+  },
+  {
+    "start": "00:55:49.630",
+    "end": "00:55:51.570",
+    "text": "And then here is an example input."
+  },
+  {
+    "start": "00:55:51.570",
+    "end": "00:55:56.770",
+    "text": "Here is the type of unit test that the model could generate."
+  },
+  {
+    "start": "00:55:56.770",
+    "end": "00:56:00.050",
+    "text": "For example, given a string with an odd number of brackets,"
+  },
+  {
+    "start": "00:56:00.050",
+    "end": "00:56:03.050",
+    "text": "the solution should output no, which is like a good unit"
+  },
+  {
+    "start": "00:56:03.050",
+    "end": "00:56:04.930",
+    "text": "test in this case."
+  },
+  {
+    "start": "00:56:04.930",
+    "end": "00:56:08.110",
+    "text": "Another one is when a closing bracket is encountered,"
+  },
+  {
+    "start": "00:56:08.110",
+    "end": "00:56:11.090",
+    "text": "it must match the most recently open brackets"
+  },
+  {
+    "start": "00:56:11.090",
+    "end": "00:56:12.970",
+    "text": "that hasn't been matched yet."
+  },
+  {
+    "start": "00:56:12.970",
+    "end": "00:56:15.725",
+    "text": "That's another kind of reasonable unit test."
+  },
+  {
+    "start": "00:56:15.725",
+    "end": "00:56:17.850",
+    "text": "And then you can ask the model to actually generate"
+  },
+  {
+    "start": "00:56:17.850",
+    "end": "00:56:20.970",
+    "text": "the code to test this as well."
+  },
+  {
+    "start": "00:56:20.970",
+    "end": "00:56:22.943",
+    "text": "Now let's take a look at the types."
+  },
+  {
+    "start": "00:56:22.943",
+    "end": "00:56:25.110",
+    "text": "I don't know if you guys see this well but the type."
+  },
+  {
+    "start": "00:56:25.110",
+    "end": "00:56:26.527",
+    "text": "But this is so big, there's no way"
+  },
+  {
+    "start": "00:56:26.527",
+    "end": "00:56:30.190",
+    "text": "for me to put it here with large font."
+  },
+  {
+    "start": "00:56:30.190",
+    "end": "00:56:34.390",
+    "text": "But this is the type of architectures that Archon found."
+  },
+  {
+    "start": "00:56:34.390",
+    "end": "00:56:37.570",
+    "text": "So basically now think about it this way."
+  },
+  {
+    "start": "00:56:37.570",
+    "end": "00:56:40.010",
+    "text": "We have different ways of mixing and matching"
+  },
+  {
+    "start": "00:56:40.010",
+    "end": "00:56:42.230",
+    "text": "models and inference time techniques,"
+  },
+  {
+    "start": "00:56:42.230",
+    "end": "00:56:45.650",
+    "text": "and we can define these layers of optimization."
+  },
+  {
+    "start": "00:56:45.650",
+    "end": "00:56:48.990",
+    "text": "For example, the first layer in this case is generation."
+  },
+  {
+    "start": "00:56:48.990",
+    "end": "00:56:51.250",
+    "text": "And then these generations are from different models"
+  },
+  {
+    "start": "00:56:51.250",
+    "end": "00:56:52.190",
+    "text": "in this case."
+  },
+  {
+    "start": "00:56:52.190",
+    "end": "00:56:56.690",
+    "text": "And then we have a critic and a ranker."
+  },
+  {
+    "start": "00:56:56.690",
+    "end": "00:57:00.730",
+    "text": "So basically, the critic will criticize these generations"
+  },
+  {
+    "start": "00:57:00.730",
+    "end": "00:57:04.650",
+    "text": "and then we rank them and then be the optimizer found"
+  },
+  {
+    "start": "00:57:04.650",
+    "end": "00:57:07.730",
+    "text": "that we could have a bunch of users at this point,"
+  },
+  {
+    "start": "00:57:07.730",
+    "end": "00:57:13.530",
+    "text": "like each fuses these responses into one output."
+  },
+  {
+    "start": "00:57:13.530",
+    "end": "00:57:19.110",
+    "text": "And then we can go from there, continue this critique ranker."
+  },
+  {
+    "start": "00:57:19.110",
+    "end": "00:57:21.930",
+    "text": "And this was like a rather complicated architecture."
+  },
+  {
+    "start": "00:57:21.930",
+    "end": "00:57:24.970",
+    "text": "And the way that we optimize this architecture"
+  },
+  {
+    "start": "00:57:24.970",
+    "end": "00:57:28.800",
+    "text": "is that we did some kind of pre-processing"
+  },
+  {
+    "start": "00:57:28.800",
+    "end": "00:57:32.020",
+    "text": "to reduce the space of optimization."
+  },
+  {
+    "start": "00:57:32.020",
+    "end": "00:57:33.920",
+    "text": "For example, the fact that we found"
+  },
+  {
+    "start": "00:57:33.920",
+    "end": "00:57:38.480",
+    "text": "this sequence of generation critic ranker and user"
+  },
+  {
+    "start": "00:57:38.480",
+    "end": "00:57:39.620",
+    "text": "do really well."
+  },
+  {
+    "start": "00:57:39.620",
+    "end": "00:57:43.120",
+    "text": "We did that offline, so we limited the search space"
+  },
+  {
+    "start": "00:57:43.120",
+    "end": "00:57:46.220",
+    "text": "just because doing this search is very expensive."
+  },
+  {
+    "start": "00:57:46.220",
+    "end": "00:57:48.300",
+    "text": "We need to run a lot of inference calls."
+  },
+  {
+    "start": "00:57:48.300",
+    "end": "00:57:52.000",
+    "text": "But then the way we optimize it that we had a held out data set"
+  },
+  {
+    "start": "00:57:52.000",
+    "end": "00:57:56.320",
+    "text": "that-- we had a training data set that we could optimize"
+  },
+  {
+    "start": "00:57:56.320",
+    "end": "00:57:59.920",
+    "text": "against that and create this accuracy versus"
+  },
+  {
+    "start": "00:57:59.920",
+    "end": "00:58:03.800",
+    "text": "the number of calls that we are making to these models, kind"
+  },
+  {
+    "start": "00:58:03.800",
+    "end": "00:58:07.100",
+    "text": "of as a metric that we are optimizing against."
+  },
+  {
+    "start": "00:58:07.100",
+    "end": "00:58:09.580",
+    "text": "We want to maximize accuracy."
+  },
+  {
+    "start": "00:58:09.580",
+    "end": "00:58:16.560",
+    "text": "And for any given budget, inference budget that we have."
+  },
+  {
+    "start": "00:58:16.560",
+    "end": "00:58:19.380",
+    "text": "And this is for some of the coding problems."
+  },
+  {
+    "start": "00:58:19.380",
+    "end": "00:58:21.260",
+    "text": "This was an optimized architecture."
+  },
+  {
+    "start": "00:58:21.260",
+    "end": "00:58:24.360",
+    "text": "Basically, we generate a ton of samples."
+  },
+  {
+    "start": "00:58:24.360",
+    "end": "00:58:28.040",
+    "text": "We generate unit tests and then we evaluate them."
+  },
+  {
+    "start": "00:58:28.040",
+    "end": "00:58:33.760",
+    "text": "Now, an interesting property here"
+  },
+  {
+    "start": "00:58:33.760",
+    "end": "00:58:38.440",
+    "text": "is that we found that stacking more and more layers"
+  },
+  {
+    "start": "00:58:38.440",
+    "end": "00:58:40.060",
+    "text": "of these inference time techniques,"
+  },
+  {
+    "start": "00:58:40.060",
+    "end": "00:58:42.560",
+    "text": "or making it deep in a way, actually"
+  },
+  {
+    "start": "00:58:42.560",
+    "end": "00:58:49.000",
+    "text": "does help with our accuracy."
+  },
+  {
+    "start": "00:58:49.000",
+    "end": "00:58:53.360",
+    "text": "In this case, for example, the right most pink graph"
+  },
+  {
+    "start": "00:58:53.360",
+    "end": "00:58:57.400",
+    "text": "is where we have an ensemble, meaning we have"
+  },
+  {
+    "start": "00:58:57.400",
+    "end": "00:58:59.140",
+    "text": "different models in our loop."
+  },
+  {
+    "start": "00:58:59.140",
+    "end": "00:59:02.920",
+    "text": "And we have three layers of critiques and fusers"
+  },
+  {
+    "start": "00:59:02.920",
+    "end": "00:59:06.080",
+    "text": "and a final fuser layer."
+  },
+  {
+    "start": "00:59:06.080",
+    "end": "00:59:08.640",
+    "text": "And this is significantly better across many"
+  },
+  {
+    "start": "00:59:08.640",
+    "end": "00:59:12.360",
+    "text": "of these tasks over both just using"
+  },
+  {
+    "start": "00:59:12.360",
+    "end": "00:59:16.140",
+    "text": "a simple the best model only once,"
+  },
+  {
+    "start": "00:59:16.140",
+    "end": "00:59:19.740",
+    "text": "or the best model eight times with one layer of fusion."
+  },
+  {
+    "start": "00:59:19.740",
+    "end": "00:59:22.160",
+    "text": "So it seems like these additional layers"
+  },
+  {
+    "start": "00:59:22.160",
+    "end": "00:59:23.800",
+    "text": "that we are adding here is actually--"
+  },
+  {
+    "start": "00:59:23.800",
+    "end": "00:59:26.040",
+    "text": "just like in deep learning, we are"
+  },
+  {
+    "start": "00:59:26.040",
+    "end": "00:59:28.780",
+    "text": "adding layers in pre-training and the model gets better."
+  },
+  {
+    "start": "00:59:28.780",
+    "end": "00:59:31.000",
+    "text": "Seems like these careful kind of additions"
+  },
+  {
+    "start": "00:59:31.000",
+    "end": "00:59:33.560",
+    "text": "of these inference layers are helping the model"
+  },
+  {
+    "start": "00:59:33.560",
+    "end": "00:59:35.200",
+    "text": "become more and more accurate."
+  },
+  {
+    "start": "00:59:35.200",
+    "end": "00:59:40.560",
+    "text": "Across many of the tasks this is true."
+  },
+  {
+    "start": "00:59:40.560",
+    "end": "00:59:43.960",
+    "text": "And so now the optimizer itself, we"
+  },
+  {
+    "start": "00:59:43.960",
+    "end": "00:59:48.580",
+    "text": "used an Bayesian optimizer again to simplify the search space."
+  },
+  {
+    "start": "00:59:48.580",
+    "end": "00:59:50.880",
+    "text": "We did a few things."
+  },
+  {
+    "start": "00:59:50.880",
+    "end": "00:59:53.200",
+    "text": "For example, we limited the optimizer"
+  },
+  {
+    "start": "00:59:53.200",
+    "end": "00:59:57.520",
+    "text": "to only use one inference time technique per layer,"
+  },
+  {
+    "start": "00:59:57.520",
+    "end": "01:00:00.760",
+    "text": "and the first layer was always just the generator."
+  },
+  {
+    "start": "01:00:00.760",
+    "end": "01:00:06.360",
+    "text": "And then we had this cascade of ranker, critic, verifier."
+  },
+  {
+    "start": "01:00:06.360",
+    "end": "01:00:09.000",
+    "text": "They could go anywhere, but we made"
+  },
+  {
+    "start": "01:00:09.000",
+    "end": "01:00:12.340",
+    "text": "certain kind of modifications to the search space."
+  },
+  {
+    "start": "01:00:12.340",
+    "end": "01:00:16.600",
+    "text": "For example, a critic should go before a ranker or a fuser"
+  },
+  {
+    "start": "01:00:16.600",
+    "end": "01:00:20.080",
+    "text": "always because we did some testing locally and saw"
+  },
+  {
+    "start": "01:00:20.080",
+    "end": "01:00:22.480",
+    "text": "this is a better choice."
+  },
+  {
+    "start": "01:00:22.480",
+    "end": "01:00:24.710",
+    "text": "And then a unit test generator must"
+  },
+  {
+    "start": "01:00:24.710",
+    "end": "01:00:27.870",
+    "text": "be followed by an evaluator up."
+  },
+  {
+    "start": "01:00:27.870",
+    "end": "01:00:32.750",
+    "text": "And again, we use a Bayesian optimizer to do this."
+  },
+  {
+    "start": "01:00:32.750",
+    "end": "01:00:39.150",
+    "text": "This is often a very powerful methodology,"
+  },
+  {
+    "start": "01:00:39.150",
+    "end": "01:00:41.910",
+    "text": "a ton of good open source software"
+  },
+  {
+    "start": "01:00:41.910",
+    "end": "01:00:43.690",
+    "text": "to do Bayesian optimization for you."
+  },
+  {
+    "start": "01:00:43.690",
+    "end": "01:00:45.630",
+    "text": "Basically, you have this search space"
+  },
+  {
+    "start": "01:00:45.630",
+    "end": "01:00:50.715",
+    "text": "that you want to configure it with different kind of choices"
+  },
+  {
+    "start": "01:00:50.715",
+    "end": "01:00:51.590",
+    "text": "for the architecture."
+  },
+  {
+    "start": "01:00:51.590",
+    "end": "01:00:53.390",
+    "text": "And the output side, you have the accuracy"
+  },
+  {
+    "start": "01:00:53.390",
+    "end": "01:00:55.710",
+    "text": "and you want to optimize for that."
+  },
+  {
+    "start": "01:00:55.710",
+    "end": "01:00:59.450",
+    "text": "And this does better than greedy search or random selection."
+  },
+  {
+    "start": "01:00:59.450",
+    "end": "01:01:01.350",
+    "text": "We are much more sample efficient in terms"
+  },
+  {
+    "start": "01:01:01.350",
+    "end": "01:01:04.990",
+    "text": "of number of configurations that Archon searches"
+  },
+  {
+    "start": "01:01:04.990",
+    "end": "01:01:09.550",
+    "text": "until it reaches a final kind of architecture,"
+  },
+  {
+    "start": "01:01:09.550",
+    "end": "01:01:12.450",
+    "text": "and we can define different objectives for it."
+  },
+  {
+    "start": "01:01:12.450",
+    "end": "01:01:16.610",
+    "text": "For example, available models, inference time,"
+  },
+  {
+    "start": "01:01:16.610",
+    "end": "01:01:22.110",
+    "text": "inference, core budget is one of them or some of them."
+  },
+  {
+    "start": "01:01:22.110",
+    "end": "01:01:26.150",
+    "text": "The thing that I want you to pay attention to in this graph"
+  },
+  {
+    "start": "01:01:26.150",
+    "end": "01:01:29.550",
+    "text": "is that this interesting property that Archon"
+  },
+  {
+    "start": "01:01:29.550",
+    "end": "01:01:32.370",
+    "text": "is, at the end, generating one response at the very end."
+  },
+  {
+    "start": "01:01:32.370",
+    "end": "01:01:36.670",
+    "text": "So it's like you're optimizing paths at one at the very end."
+  },
+  {
+    "start": "01:01:36.670",
+    "end": "01:01:42.350",
+    "text": "And what was interesting here is that while using just"
+  },
+  {
+    "start": "01:01:42.350",
+    "end": "01:01:48.390",
+    "text": "the open source models, we could match or exceed"
+  },
+  {
+    "start": "01:01:48.390",
+    "end": "01:01:51.270",
+    "text": "these closed source models at the time,"
+  },
+  {
+    "start": "01:01:51.270",
+    "end": "01:01:53.790",
+    "text": "the frontier closed source model at the time,"
+  },
+  {
+    "start": "01:01:53.790",
+    "end": "01:01:58.550",
+    "text": "by a large margin across many of these tasks in terms"
+  },
+  {
+    "start": "01:01:58.550",
+    "end": "01:01:59.570",
+    "text": "of paths at one."
+  },
+  {
+    "start": "01:01:59.570",
+    "end": "01:02:02.070",
+    "text": "Here's the average path at one improvement."
+  },
+  {
+    "start": "01:02:02.070",
+    "end": "01:02:04.830",
+    "text": "And not only that, we could train"
+  },
+  {
+    "start": "01:02:04.830",
+    "end": "01:02:06.970",
+    "text": "Archon to be task specific."
+  },
+  {
+    "start": "01:02:06.970",
+    "end": "01:02:09.450",
+    "text": "So when we are doing the Bayesian optimization,"
+  },
+  {
+    "start": "01:02:09.450",
+    "end": "01:02:14.270",
+    "text": "we only look into a certain task and we test on that,"
+  },
+  {
+    "start": "01:02:14.270",
+    "end": "01:02:17.210",
+    "text": "or we could train Archon to be general purpose."
+  },
+  {
+    "start": "01:02:17.210",
+    "end": "01:02:21.140",
+    "text": "So we wanted it to do better good across many--"
+  },
+  {
+    "start": "01:02:21.140",
+    "end": "01:02:23.120",
+    "text": "to do well across many tasks."
+  },
+  {
+    "start": "01:02:23.120",
+    "end": "01:02:26.480",
+    "text": "And even that the general purpose one does really,"
+  },
+  {
+    "start": "01:02:26.480",
+    "end": "01:02:29.220",
+    "text": "really well and better than the frontier"
+  },
+  {
+    "start": "01:02:29.220",
+    "end": "01:02:31.560",
+    "text": "models across these tasks."
+  },
+  {
+    "start": "01:02:31.560",
+    "end": "01:02:35.500",
+    "text": "And that was a very interesting observation"
+  },
+  {
+    "start": "01:02:35.500",
+    "end": "01:02:38.420",
+    "text": "that you can design these inference time architectures"
+  },
+  {
+    "start": "01:02:38.420",
+    "end": "01:02:42.900",
+    "text": "that do well beyond the task or the limited tasks"
+  },
+  {
+    "start": "01:02:42.900",
+    "end": "01:02:44.280",
+    "text": "that they're trained on."
+  },
+  {
+    "start": "01:02:44.280",
+    "end": "01:02:48.380",
+    "text": "So on average, in this case, we were outperforming GPT-4.0"
+  },
+  {
+    "start": "01:02:48.380",
+    "end": "01:02:54.740",
+    "text": "or Claude 3.5 Sonnet in passage one by an average of 14.1%"
+  },
+  {
+    "start": "01:02:54.740",
+    "end": "01:02:58.940",
+    "text": "across these instruction following reasoning and math"
+  },
+  {
+    "start": "01:02:58.940",
+    "end": "01:03:00.820",
+    "text": "encoding problems."
+  },
+  {
+    "start": "01:03:00.820",
+    "end": "01:03:05.600",
+    "text": "Here are some questions, that I want you to think about."
+  },
+  {
+    "start": "01:03:05.600",
+    "end": "01:03:07.780",
+    "text": "But since we're out of time."
+  },
+  {
+    "start": "01:03:07.780",
+    "end": "01:03:11.020",
+    "text": "Hopefully, you think about it yourself."
+  },
+  {
+    "start": "01:03:11.020",
+    "end": "01:03:15.730",
+    "text": "And hope you have a happy weekend."
+  }
+]

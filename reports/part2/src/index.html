@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Stanford CS329A Part 2 测试时计算扩展学习报告：逐字稿、投影片页序、论文分析与测试题。">
+  <title>CS329A Part 2｜Test-Time Compute Scaling</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="rail" aria-label="章节导航">
+      <div class="brand">
+        <div class="brand-mark">329A</div>
+        <div><strong>学习报告</strong><small>Part 2 · 2026 发布版</small></div>
+      </div>
+      <div class="progress-shell" aria-hidden="true"><div class="progress-bar" id="progress"></div></div>
+      <p class="nav-label">导航</p>
+      <nav id="toc">
+        <a href="#source-note">版本与材料</a>
+        <a href="#map">知识地图</a>
+        <a href="#block-1">01 多试几次</a>
+        <a href="#block-2">02 挑出正确答案</a>
+        <a href="#block-3">03 分配计算量</a>
+        <a href="#block-4">04 组合完整流程</a>
+        <a href="#corrections">字幕纠错</a>
+        <a href="#quiz">测试题</a>
+        <a href="#transcript">完整逐字稿</a>
+        <a href="#sources">来源</a>
+      </nav>
+      <div class="rail-note">页码指录像画面中投影片页脚，不代表已公开的官方 PPT 文件。</div>
+    </aside>
+
+    <main>
+      <header class="hero">
+        <p class="eyebrow">Stanford CS329A · Self-Improving AI Agents · Part 2</p>
+        <h1>Test-Time<br>Compute Scaling</h1>
+        <p class="dek">模型训练完以后，还能不能靠“多想几次、多试几种解法”答得更好？这一讲研究的就是这个问题。</p>
+        <div class="facts">
+          <span class="fact">公开视频：2026-08-03</span>
+          <span class="fact">课堂录制：2025-09-26</span>
+          <span class="fact">讲者：Azalia Mirhoseini</span>
+          <span class="fact">时长：1:03:20</span>
+          <span class="fact">英文字幕：9,519 词</span>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="section" id="source-note" data-section>
+          <p class="section-kicker">材料说明</p>
+          <h2>这份报告对应哪一版课程？</h2>
+          <p class="lead">先说明年份：这段视频在 2026 年公开，但课是在 2025 年秋季讲的。截至 2026-10-13，官网仍只有 Autumn 2025 的课程安排，没有单独的 2026 版大纲。</p>
+          <div class="notice">
+            <strong>课件状态</strong>
+            官网只给了四篇论文，没有可下载的 PPT。官方 GitHub 中名为 <code>slides</code> 的文件也是空的。因此，本报告从录像画面中截取投影片并恢复页序，再用论文核对公式、数字和图表。文中的“投影片 pN”指录像画面里的页码。
+          </div>
+
+          <div class="source-grid">
+            <article class="source-card">
+              <span class="tag">官方录像</span><span class="tag">2026 发布</span>
+              <h3>Part 2 · Test-Time Compute Scaling</h3>
+              <p>逐字稿来自 YouTube 英文字幕，共保留 1,081 个带时间的位置。容易听错的术语和数字已用论文核对。</p>
+              <a href="https://www.youtube.com/watch?v=-Ggc37xLj_Y">打开视频</a> · <a href="../data/part2-transcript.txt">下载逐字稿</a>
+            </article>
+            <article class="source-card">
+              <span class="tag">当前官网</span><span class="tag">Autumn 2025</span>
+              <h3>Lecture 2 官方对应关系</h3>
+              <p>官网把 2025-09-26 的第二讲标为 Test-time Compute Scaling，并列出四篇指定论文。</p>
+              <a href="https://cs329a.stanford.edu/">课程官网</a> · <a href="https://online.stanford.edu/courses/cs329a-self-improving-ai-agents">Stanford Online</a>
+            </article>
+          </div>
+
+          <h3>四篇官方指定阅读</h3>
+          <table>
+            <thead><tr><th>课堂作用</th><th>论文</th><th>报告重点</th></tr></thead>
+            <tbody>
+              <tr><td>多生成几次</td><td><a href="https://arxiv.org/abs/2407.21787">Large Language Monkeys</a></td><td>多试几次后，至少答对一次的机会能提高多少</td></tr>
+              <tr><td>解释增长规律</td><td><a href="https://arxiv.org/abs/2502.17578">How Do Large Language Monkeys Get Their Power (Laws)?</a></td><td>为什么单道题很快到顶，整个题库却还能继续提高</td></tr>
+              <tr><td>怎么花计算量</td><td><a href="https://arxiv.org/abs/2408.03314">Scaling LLM Test-Time Compute Optimally…</a></td><td>多想几条路线、反复修改，还是用评分器引导搜索</td></tr>
+              <tr><td>组合完整系统</td><td><a href="https://arxiv.org/abs/2409.15254">Archon</a></td><td>把生成、批评、排序、融合和检查组合起来</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="map" data-section>
+          <p class="section-kicker">学习路线</p>
+          <h2>这一讲连续回答四个问题</h2>
+          <p class="lead">四篇论文在回答同一个问题：多给模型一些计算时间，怎样才能真正换来更好的答案？老师先看“能不能偶尔答对”，再看“能不能把正确答案挑出来”，接着讨论“有限的计算量怎么花”，最后把这些步骤拼成完整系统。</p>
+          <div class="map-grid">
+            <article class="map-card">
+              <h3>第一步：多试几次</h3>
+              <p><span class="page-tag">投影片 p5–20</span><span class="time-tag">00:00–12:19</span></p>
+              <p>同一道题生成很多次，至少出现一次正确答案的机会怎样变化。</p>
+            </article>
+            <article class="map-card">
+              <h3>第二步：把正确答案挑出来</h3>
+              <p><span class="page-tag">投影片 p20–28</span><span class="time-tag">12:20–26:54</span></p>
+              <p>答案可能已经生成出来，但评分器未必认得它，多数投票也可能选中常见的错误。</p>
+            </article>
+            <article class="map-card">
+              <h3>第三步：把计算量花对地方</h3>
+              <p><span class="page-tag">投影片 p29–45</span><span class="time-tag">26:55–45:46</span></p>
+              <p>应该多尝试几种解法，还是沿着一个解法反复修改；简单题和难题该不该用同一种办法。</p>
+            </article>
+            <article class="map-card">
+              <h3>第四步：组合完整工作流</h3>
+              <p><span class="page-tag">投影片 p46–64</span><span class="time-tag">45:47–63:11</span></p>
+              <p>把生成、批评、排序、融合和检查拼成流水线，并自动寻找效果和成本更合适的组合。</p>
+            </article>
+          </div>
+          <div class="logic" aria-label="知识块逻辑关系">
+            <span>先让答案出现</span><span>→</span><span>再把它挑出来</span><span>→</span><span>少花冤枉计算</span><span>→</span><span>拼成完整系统</span>
+          </div>
+        </section>
+
+        <section class="section" id="block-1" data-section>
+          <div class="block-head">
+            <div><p class="section-kicker">知识块 01</p><h2>让模型多答几次，为什么更容易找到正确答案？</h2></div>
+            <div class="block-meta"><strong>投影片 p5–20</strong>00:00:05–00:12:19</div>
+          </div>
+          <p class="lead">模型训练完成后，还能不能靠“多试几次”答得更好？这里不修改模型，只让它对同一道题生成多份答案，再比较和筛选。课程把回答问题时增加的这部分工作称为“测试时计算”（test-time compute）。</p>
+
+          <div class="page-sequence">
+            <article class="page-step">
+              <h3>p5–7｜为什么在回答问题时多花计算量</h3>
+              <p>训练大模型常常需要数月，而过去的模型在回答问题时通常只生成一次。老师提出：对于少量但很重要的问题，可以让智能体在后台多尝试几次，甚至反复检查和修改。这样做不能代替训练，但它给了我们另一种提高答案质量的办法。</p>
+            </article>
+            <article class="page-step">
+              <h3>p8–10｜先多生成，再检查</h3>
+              <p>做法分两步。第一步，让模型独立回答同一道题很多次。第二步，用检查器从这些答案里选出一个。多次回答不会让模型临时学会新知识，它只是让那些“偶尔才会出现”的正确解更有机会被生成出来。</p>
+              <p>代码题最容易看懂这个过程：模型写出很多份程序，系统逐一运行测试，能通过测试的才留下。论文把“多份答案里至少有一份正确”称为正确答案覆盖率（coverage）。</p>
+              <div class="callout blue"><strong>论文中的具体结果</strong>在 SWE-bench Lite 上，DeepSeek-Coder-V2-Instruct 只生成一次时答对 15.9% 的问题；每题生成 250 次后，有 56% 的问题至少出现过一次正确答案。这个数字只适用于论文当时使用的模型、工具和测试集。</div>
+            </article>
+            <article class="page-step">
+              <h3>p11–14｜多生成多少次，收益怎样变化？</h3>
+              <p>训练阶段的扩展规律研究“模型更大、数据更多，会带来多少提升”。这里研究的是另一个横轴：每道题生成多少份答案。用 <code>k</code> 表示生成次数，用 <code>c</code> 表示至少出现一次正确答案的题目比例，论文用 <code>log(c) ≈ a·k<sup>b</sup></code> 拟合实验曲线。<code>a</code> 和 <code>b</code> 是从数据中估出来的参数，不是对所有任务都成立的常数。曲线表达的直觉很简单：多试有用，但越往后，每增加一次尝试带来的收益通常越小。</p>
+            </article>
+            <article class="page-step">
+              <h3>p15–18｜为什么单道题很快到顶，整体成绩却还能慢慢提高？</h3>
+              <p>单看一道固定题，多试几次后，收益通常很快变小。但一个题库里总有少数极难题。简单题很快被解决，后来剩下的错误越来越集中在这些难题上。因此，单道题的失败率可能下降得很快，把许多难易不同的题放在一起平均后，整体失败率却下降得很慢。论文把前者称为指数下降，把后者称为幂律下降。</p>
+            </article>
+            <article class="page-step">
+              <h3>p19–20｜训练时花钱，还是答题时花钱？</h3>
+              <p>以前，大部分计算量在训练模型时一次性投入。现在，还可以只在重要问题出现时，让模型多想几次。下一步的问题随之出现：答案多了以后，系统怎样知道哪一个才是真的正确？</p>
+            </article>
+          </div>
+
+          <div class="formula">
+            pass<sub>i</sub>@k = 1 − (1 − p<sub>i</sub>)<sup>k</sup>
+            <small>这行公式计算“尝试 <code>k</code> 次，至少成功一次”的概率。若单次成功率是 10%，尝试 10 次后，至少成功一次的概率是 <code>1−0.9¹⁰≈65.1%</code>。前提是每次尝试近似独立，单次成功率不变。若模型一次也不可能答对，再试多少次都没有用。</small>
+          </div>
+          <div class="formula">
+            F(k)=E[(1−p)<sup>k</sup>] ≈ ∫e<sup>−kp</sup>·C p<sup>α−1</sup>dp = CΓ(α)k<sup>−α</sup>
+            <small><strong>进阶推导：</strong>这条公式计算整个题库在尝试 <code>k</code> 次后的平均失败率。<code>F(k)</code> 表示随机抽一道题仍然全部失败的概率，<code>E</code> 表示对所有题取平均。若题库里有很多单次成功率 <code>p</code> 接近 0 的难题，平均失败率会近似按 <code>k<sup>−α</sup></code> 缓慢下降。这个假设描述的是题目难度分布，不是说每一道题本身都服从幂律。</small>
+          </div>
+
+          <div class="figure-grid">
+            <figure class="figure"><img src="../assets/slides/03-scaling-law.jpg" alt="录像投影片：Scaling Laws for Inference"><figcaption><strong>投影片 p12 · 05:20</strong> 曲线可以估计：为了让更多题至少出现一次正确答案，大约需要生成多少份答案。它不是对所有模型和任务都精确成立的定律。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/04-long-tail.jpg" alt="录像投影片：困难问题长尾定理"><figcaption><strong>约 p16 · 09:32</strong> 单道题的收益很快饱和；题库中持续剩下的极难题，使整体成绩只缓慢提高。</figcaption></figure>
+          </div>
+
+          <div class="callout gold">
+            <strong>边界条件</strong>
+            这套办法有明确边界。有些实验曲线并不符合上面的拟合；Pythia 在 CodeContests 上即使生成 10,000 次，也可能一道都没有答对。正确结论是“某些任务可以靠多次尝试稳定提高”，不是“只要一直生成就必然进步”。
+          </div>
+        </section>
+
+        <section class="section" id="block-2" data-section>
+          <div class="block-head">
+            <div><p class="section-kicker">知识块 02</p><h2>已经生成了正确答案，为什么系统仍可能答错？</h2></div>
+            <div class="block-meta"><strong>投影片 p20–28</strong>00:12:20–00:26:54</div>
+          </div>
+          <p class="lead">假设模型生成了 100 份答案，其中确实有一份正确。只有把这一份找出来并交给用户，系统才算真正答对。前一块只问“正确答案有没有出现”；这一块问“系统能不能认出它”。</p>
+
+          <div class="metric-grid">
+            <div class="metric"><code>pass@1</code><span>系统最后交出一份答案时，答对的比例</span></div>
+            <div class="metric"><code>pass@k</code><span>生成 k 份答案，其中至少有一份正确的比例</span></div>
+            <div class="metric"><code>best-of-N</code><span>先生成 N 份答案，再由评分器挑一份</span></div>
+            <div class="metric"><code>majority@N</code><span>选择出现次数最多的答案，也就是多数投票</span></div>
+          </div>
+
+          <div class="page-sequence">
+            <article class="page-step">
+              <h3>p20–23｜什么样的答案容易检查？</h3>
+              <p>数学证明可以交给证明检查器；代码可以运行单元测试；把 PyTorch 程序改写成 CUDA 时，可以比较两段程序对同一输入是否给出相同结果。只要检查比重新生成更便宜、更可靠，系统就能不断生成答案并迅速淘汰错误答案。</p>
+              <p>但测试也会出错。SWE-bench Lite 中有 11.3% 的问题存在结果不稳定的测试；CodeContests 中，122 道题里有 35 道会把官方正确的 Python 解拒绝掉。因此，检查器本身也需要被检查。</p>
+            </article>
+            <article class="page-step">
+              <h3>p24–25｜“出现过正确答案”和“最后答对”之间有多大差距？</h3>
+              <p>论文用一个假想裁判计算理论上限：它提前知道标准答案，所以只要候选里出现过正确答案，就一定能挑出来。这个裁判叫 oracle，真实系统无法使用。实验中，候选里出现正确答案的比例还在上升，但多数投票和评分器挑选的最终准确率很快不再提高。答案越多，里面虽然可能多出几个稀有的正确答案，也同时多出大量很像真的错误答案。</p>
+            </article>
+            <article class="page-step">
+              <h3>p26–27｜多数投票为什么会非常自信地选错？</h3>
+              <p>多数投票假设：出现次数最多的答案最可能正确。困难题往往正好相反。模型可能把同一个错误答案重复几千次，而正确答案只偶尔出现一两次。此时增加生成次数，只会让错误答案以更大的票数获胜。</p>
+            </article>
+            <article class="page-step">
+              <h3>p28｜接下来应该改进哪一步？</h3>
+              <p>课堂讨论提出了几种办法：让模型修改旧答案、先检索资料、用多个评分器共同判断，以及提高测试覆盖率。老师把这些想法归成两类：生成答案时不要只会从头重来；检查答案时也不要只依赖一个不可靠的分数。</p>
+            </article>
+          </div>
+
+          <div class="formula">
+            Gap(k) = Coverage<sub>oracle</sub>(k) − Accuracy<sub>selector</sub>(k)
+            <small>这行公式只是用来量差距。例如 100 道题中，有 80 道的候选里包含正确答案，但筛选器最后只答对 50 道，差距就是 30 个百分点。oracle 是事后借助标准答案算出的上限，真实系统不能直接调用。</small>
+          </div>
+
+          <div class="figure-grid">
+            <figure class="figure"><img src="../assets/slides/05-verification-gap.jpg" alt="录像投影片：推理时扩展需要稳健验证"><figcaption><strong>投影片 p25 · 15:45</strong> 能直接运行测试的任务更容易挑出正确答案；开放问答只能依赖不够可靠的评分器。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/06-rare-correct.jpg" alt="录像投影片：正确生成非常稀有"><figcaption><strong>投影片 p27 · 18:50</strong> 困难题中，正确答案可能只出现一两次，而同一种错误会反复出现。</figcaption></figure>
+          </div>
+
+          <div class="callout gold">
+            <strong>边界条件</strong>
+            “能自动运行测试”也不等于“测试一定正确”。测试可能遗漏关键情况、把正确答案判错，或者在重复运行时给出不同结果。系统的最终上限同时受生成答案和检查答案两部分限制。
+          </div>
+        </section>
+
+        <section class="section" id="block-3" data-section>
+          <div class="block-head">
+            <div><p class="section-kicker">知识块 03</p><h2>预算怎么花：多试几条路，还是把一条路想深？</h2></div>
+            <div class="block-meta"><strong>投影片 p29–45</strong>00:26:55–00:45:46</div>
+          </div>
+          <p class="lead">多给模型一些计算量，不等于让它随便多写。假设一道题最多允许调用模型 <code>N</code> 次，我们要决定：同时尝试更多解法，还是反复修改同一份答案；什么时候放弃一条走不通的路线；最后由谁判断哪份答案最好。</p>
+
+          <div class="page-sequence">
+            <article class="page-step">
+              <h3>p29–31｜多找几条路，还是沿一条路继续走？</h3>
+              <p><strong>并行采样（parallel sampling）</strong>是让模型从头独立作答多次，好比让多名学生分别解题。它能覆盖更多思路，而且一份答案走错不会拖累其他答案。<strong>顺序修订（sequential revision）</strong>是让模型在上一版答案上继续检查和修改，好比一名学生反复改稿。它能利用前一轮反馈，但如果最初方向就错了，也可能越改越偏。</p>
+              <p>课程把“尝试多少条独立路线”称为搜索宽度，把“沿同一条路线修改多少轮”称为搜索深度。现在的推理模型已经学会了一部分自我检查和改写行为，但这不保证每次修改都会变好。</p>
+            </article>
+            <article class="page-step">
+              <h3>p31–34｜等答案写完再评分，还是边写边检查？</h3>
+              <p>结果奖励模型（Outcome Reward Model，ORM）只看完整答案，适合“生成 N 份，再挑一份”。过程奖励模型（Process Reward Model，PRM）会给每个完整的推理步骤打分。这样，搜索还没结束时就能淘汰明显走偏的路线，只保留最有希望的几条继续展开，这叫束搜索（beam search）。</p>
+              <p>老师特别说明：PRM 通常按“推理步骤”评分，不是每生成一个 token 就评一次。它换到训练材料之外的问题上是否仍然可靠，需要单独验证。</p>
+            </article>
+            <article class="page-step">
+              <h3>p34–37｜没有一种办法适合所有题</h3>
+              <p>所谓“计算最优”（compute-optimal），不是找到一套永远最好的固定流程，而是在同样预算下，根据题目难度选择更划算的做法。较简单的题通常已经有一条接近正确的路线，继续修改可能更有效；较难的题更需要同时尝试不同思路；最难的题上，基础模型几乎从不产生正确方向，多搜索和多修改都可能无济于事。</p>
+              <div class="callout gold"><strong>判断难度也要花钱</strong>系统事先并不知道一道题有多难。论文为了得到接近真实的难度，为每题生成了 2,048 份答案，再估计模型第一次作答就答对的概率。实际部署时只能用评分器来猜。主实验没有完整计入这笔额外成本，所以“按难度分配计算量”并不是免费的能力。</div>
+            </article>
+            <article class="page-step">
+              <h3>p38–41｜“节省 4 倍计算量”具体指什么？</h3>
+              <p>在 PaLM 2-S* 解 MATH 的这组实验里，按难度选择搜索或修订策略，生成约 16 份答案，就能达到或超过普通方法生成 64 份答案的效果。因此，4 倍是这组设置里的最好结果，不是换一个模型或任务也必然成立的常数。</p>
+            </article>
+            <article class="page-step">
+              <h3>p41–45｜什么时候应该直接换更强的模型？</h3>
+              <p>如果基础模型偶尔能把题做对，多给它几次尝试，再用可靠的检查器挑选，可能比只调用一次约 14 倍规模的模型更有效。但如果基础模型几乎从来想不到正确路线，搜索就没有东西可以放大，此时应先增强基础模型。</p>
+              <p>成本比较还要考虑使用次数。训练虽然昂贵，但训练好的模型可以服务大量请求；答题时增加计算量，则会在每次请求中重新发生。因此，不能把训练用的计算量和一次回答产生的 token 简单地一比一交换。</p>
+            </article>
+          </div>
+
+          <div class="formula">
+            θ*(q,N) = arg max<sub>θ</sub> Pr(最终答案正确｜题目 q，预算 N，策略 θ)
+            <small>这条公式只表达一件事：题目和预算确定后，从所有可选做法中挑出最可能答对的一种。<code>θ</code> 代表整套做法，例如生成几份答案、修改几轮、用哪个评分器、每轮保留几条路线。比如预算允许调用模型 16 次，可以比较“生成 16 份答案”和“生成 4 份、每份修改 3 轮”哪种成功率更高。<code>arg max</code> 就是找出成功率最大的选择。前提是我们能可靠估计这些策略的成功率；这条公式本身不能保证估计结果正确。</small>
+          </div>
+
+          <div class="figure-grid">
+            <figure class="figure"><img src="../assets/slides/07-parallel-sequential.jpg" alt="录像投影片：并行采样与顺序修订"><figcaption><strong>约 p30 · 27:45</strong> 横向尝试不同解法，纵向打磨同一解法。两者可以组合：先广泛尝试，再重点修改少数答案。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/08-search-with-reward.jpg" alt="录像投影片：使用评分器的答案选择与搜索"><figcaption><strong>约 p33 · 30:15</strong> ORM 在答案写完后评分；PRM 能在推理途中发现低分路线并提前停止。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/09-compute-optimal-results.jpg" alt="录像投影片：计算最优搜索结果"><figcaption><strong>约 p38 · 36:00</strong> 最初增加少量计算通常最划算，随后收益逐渐变小。曲线会随评分器质量和题目难度改变。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/10-testtime-vs-pretrain.jpg" alt="录像投影片：答题时计算与训练计算对比"><figcaption><strong>约 p41 · 38:10</strong> 简单和中等题更容易从多次推理中获益；特别困难的题常常需要先提升基础模型。</figcaption></figure>
+          </div>
+
+          <div class="callout blue">
+            <strong>真正要控制的是下一步做什么</strong>
+            token 数只说明花了多少计算量，不能说明这些计算是否花对。系统每走一步都应判断：再试一条新路线、继续修改当前答案、换更强的评分器、直接换更强模型，还是收益已经很小，应该停止。固定生成 64 份答案只是便于比较的基线。
+          </div>
+        </section>
+
+        <section class="section" id="block-4" data-section>
+          <div class="block-head">
+            <div><p class="section-kicker">知识块 04</p><h2>Archon：让系统自动搭建答题流水线</h2></div>
+            <div class="block-meta"><strong>投影片 p46–64</strong>00:45:47–01:03:11</div>
+          </div>
+          <p class="lead">上一块由研究者手工比较几种办法。Archon 再向前一步：把可用模型和操作当成积木，自动尝试“先生成、再批评、再排序、再融合”等组合，找出在指定测试集和预算下表现最好的一条答题流水线。它不修改模型参数，只改变调用模型的顺序和次数。论文把这条流水线称为推理时架构（inference-time architecture）。</p>
+
+          <div class="page-sequence">
+            <article class="page-step">
+              <h3>p46–49｜先给材料，最后得到一张流程图</h3>
+              <p>使用 Archon 时，要先给出四样东西：用哪套测试题评估，允许调用哪些大语言模型，可以使用哪些操作，以及每道题最多调用模型多少次。优化器会在开发集上试跑多种组合，最后输出一张固定流程图，后面的新问题都照这张图执行。这个搜索过程叫 ITAS，全称 Inference-Time Architecture Search，即“推理时架构搜索”。</p>
+            </article>
+            <article class="page-step">
+              <h3>p50–52｜六类可组合操作</h3>
+              <table>
+                <thead><tr><th>操作</th><th>作用</th><th>风险</th></tr></thead>
+                <tbody>
+                  <tr><td>Generator<br>生成器</td><td>提出一份或多份答案</td><td>不同答案可能大同小异，并重复同一种错误</td></tr>
+                  <tr><td>Critic<br>批评器</td><td>指出答案的缺陷、遗漏和可取之处</td><td>批评本身也可能判断错误</td></tr>
+                  <tr><td>Ranker<br>排序器</td><td>把答案从好到坏排序</td><td>可能偏爱特定位置、长度或写作风格</td></tr>
+                  <tr><td>Fuser<br>融合器</td><td>参考多份答案，重新写一份综合答案</td><td>可能合并优点，也可能把几种错误拼在一起</td></tr>
+                  <tr><td>Verifier<br>验证器</td><td>判断答案和理由是否可信</td><td>遇到陌生问题可能失准，也可能被答案钻空子</td></tr>
+                  <tr><td>Unit tests<br>检查项</td><td>列出检查条件，再逐项检查答案</td><td>检查项可能不全，关键要求也可能被漏掉</td></tr>
+                </tbody>
+              </table>
+            </article>
+            <article class="page-step">
+              <h3>p52–55｜为什么“合并答案”能超过“挑出最好答案”？</h3>
+              <p>理想选择器（oracle selection）提前知道标准答案，但它只能从现有答案中挑一份。融合器（fuser）做的事不同：它读取几份各有缺漏的答案，再写出一份新的答案。新答案可能保留甲的正确推理，又补上乙注意到的细节，所以分数可以高于原来任何一份。这没有突破理论上限，只是新增了一份原本不存在的候选。</p>
+            </article>
+            <article class="page-step">
+              <h3>p56–60｜没有标准答案时，怎样检查？</h3>
+              <p>总结、写作和一般问答往往没有可以直接运行的标准答案。Archon 会先把要求拆成自然语言检查项，再让模型逐项判断答案是否满足。例如，“括号是否成对”可以拆成数量是否一致、嵌套顺序是否正确等条件。</p>
+              <p>系统还可以重复多轮“批评—排序—融合”，让答案逐步改进。论文把这种多轮流程类比为更深的网络，但实验表明：多加一层不一定更好，结果取决于具体任务。</p>
+            </article>
+            <article class="page-step">
+              <h3>p61–63｜9,576 种组合，不需要逐个试</h3>
+              <p>模型、操作、层数和顺序组合起来，共有约 9,576 种有效配置，逐个试跑成本太高。Archon 先排除明显不合理的流程：第一步必须先生成答案；批评要发生在排序或融合之前；生成检查项后必须紧接着执行检查。</p>
+              <p>然后使用贝叶斯优化：根据已经试过的组合和得分，推测下一批最值得测试的组合，从而减少昂贵的真实模型调用。</p>
+            </article>
+            <article class="page-step">
+              <h3>p64｜这些提升数字应该怎样理解？</h3>
+              <p>课程录像引用的是旧版结果：在当时的实验口径下，Archon 相对 GPT-4o 和 Claude 3.5 Sonnet 平均高 14.1%。目前可获得的 Archon v6 换了分组方式：只看闭源系统时平均高 15.1%；把开源和闭源系统一起比较时，相对当时最强的单次调用方案平均高 10.9%。这些数字只描述论文使用的模型、六个测试集和指定调用预算，不能直接套到 2026 年的新模型上。</p>
+            </article>
+          </div>
+
+          <div class="figure-grid">
+            <figure class="figure"><img src="../assets/slides/11-archon-framework.jpg" alt="录像投影片：Archon 框架"><figcaption><strong>投影片 p46 · 47:00</strong> Archon 接收测试集、预算、可用操作和模型，再找出一条得分最高的执行流程。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/12-fusion-results.jpg" alt="录像投影片：融合相对理想选择"><figcaption><strong>投影片 p52 · 51:15</strong> 先选出排名前五的答案，再由融合器重写。融合不是简单投票，而是生成一份新答案。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/13-natural-language-tests.jpg" alt="录像投影片：自然语言检查项"><figcaption><strong>约 p56 · 55:48</strong> 把抽象要求拆成可以逐项检查的条件，但检查项仍由模型生成，可能遗漏。</figcaption></figure>
+            <figure class="figure"><img src="../assets/slides/15-deep-architectures.jpg" alt="录像投影片：多轮推理架构"><figcaption><strong>约 p60 · 58:35</strong> 多轮批评和融合有时能提高准确率，也会增加生成量、等待时间和维护成本。</figcaption></figure>
+          </div>
+
+          <div class="callout gold">
+            <strong>工程限制</strong>
+            Archon v6 中，复杂流程的延迟和费用最高可增加约 5 倍。70B 以上模型比较能胜任生成、批评和融合等多种角色；7B 模型更适合做排序。代码任务与指令遵循、推理任务需要的最佳流程也不同。如果搜索只盯着开发集分数，找到的流程还可能换一套题就退化，也就是对开发集过拟合。
+          </div>
+        </section>
+
+        <section class="section" id="corrections" data-section>
+          <p class="section-kicker">字幕纠错</p>
+          <h2>自动字幕听错了哪些词？</h2>
+          <p class="lead">自动字幕经常把模型名、缩写和数字听错。正文已经按论文和上下文改正，这里保留几处容易误导理解的例子。</p>
+          <div class="corrections">
+            <div class="correction"><span class="wrong">test laws / paths at one</span><span class="arrow">→</span><span class="right">test loss / pass@1</span></div>
+            <div class="correction"><span class="wrong">Llama 3-88 / 708</span><span class="arrow">→</span><span class="right">Llama 3-8B / 70B</span></div>
+            <div class="correction"><span class="wrong">Arkon / Archeon</span><span class="arrow">→</span><span class="right">Archon</span></div>
+            <div class="correction"><span class="wrong">users</span><span class="arrow">→</span><span class="right">fusers</span></div>
+            <div class="correction"><span class="wrong">RAC</span><span class="arrow">→</span><span class="right">RAG（检索增强生成）</span></div>
+            <div class="correction"><span class="wrong">每题服从幂律</span><span class="arrow">→</span><span class="right">单独看一道题，收益通常很快饱和；把难易不同的题放在一起平均，才可能呈现幂律</span></div>
+            <div class="correction"><span class="wrong">oracle verifier 可部署</span><span class="arrow">→</span><span class="right">假设能看到标准答案的理想选择器，只用于估计理论上限，真实系统无法使用</span></div>
+            <div class="correction"><span class="wrong">14.1% 是当前普遍增益</span><span class="arrow">→</span><span class="right">这是旧版特定实验的平均结果，不能当成所有模型都能获得的收益</span></div>
+          </div>
+        </section>
+
+        <section class="section" id="quiz" data-section>
+          <p class="section-kicker">课后测试</p>
+          <h2>测试题</h2>
+          <p class="lead">本页不显示答案。答完后复制选项，再提交评分。</p>
+          <form class="quiz" id="quiz-form">
+            <fieldset class="question"><legend>设模型每次独立作答，单次答对的概率为 p。连续尝试 k 次，至少有一次答对的概率是多少？</legend>
+              <label class="option"><input type="radio" name="q1" value="A">A. p·k</label>
+              <label class="option"><input type="radio" name="q1" value="B">B. 1−(1−p)ᵏ</label>
+              <label class="option"><input type="radio" name="q1" value="C">C. exp(−pk)</label>
+              <label class="option"><input type="radio" name="q1" value="D">D. 1−pᵏ</label>
+            </fieldset>
+            <fieldset class="question"><legend>为什么单独看每道题时，收益很快饱和；把许多题平均后，成绩却可能继续缓慢上升？</legend>
+              <label class="option"><input type="radio" name="q2" value="A">A. 所有题的难度完全相同</label>
+              <label class="option"><input type="radio" name="q2" value="B">B. 多数题第一次作答就几乎必然正确</label>
+              <label class="option"><input type="radio" name="q2" value="C">C. 题库里有不少极难题，它们单次答对的概率接近 0</label>
+              <label class="option"><input type="radio" name="q2" value="D">D. 必须使用更大的模型来选择答案</label>
+            </fieldset>
+            <fieldset class="question"><legend>判断：只要生成的多份答案中更常出现正确答案，系统最后交出的答案就一定会同步变好。</legend>
+              <label class="option"><input type="radio" name="q3" value="T">正确</label>
+              <label class="option"><input type="radio" name="q3" value="F">错误</label>
+            </fieldset>
+            <fieldset class="question"><legend>为什么多数投票在困难题上可能失败？</legend>
+              <label class="option"><input type="radio" name="q4" value="A">A. 正确答案很少出现，某个错误答案反而出现得最多</label>
+              <label class="option"><input type="radio" name="q4" value="B">B. 采样温度必须恒为 0</label>
+              <label class="option"><input type="radio" name="q4" value="C">C. 多数投票只能处理代码</label>
+              <label class="option"><input type="radio" name="q4" value="D">D. 理想选择器会改变模型参数</label>
+            </fieldset>
+            <fieldset class="question"><legend>“逐步检查推理过程”和“只看最终结果”这两种评分方法，主要区别是什么？</legend>
+              <label class="option"><input type="radio" name="q5" value="A">A. 前者给中间步骤打分，后者只给最终答案打分</label>
+              <label class="option"><input type="radio" name="q5" value="B">B. 前者只用于训练，后者只用于微调</label>
+              <label class="option"><input type="radio" name="q5" value="C">C. 前者不需要训练数据</label>
+              <label class="option"><input type="radio" name="q5" value="D">D. 二者完全等价</label>
+            </fieldset>
+            <fieldset class="question"><legend>判断：题目越难，越应该不断增加答题时的计算量。</legend>
+              <label class="option"><input type="radio" name="q6" value="T">正确</label>
+              <label class="option"><input type="radio" name="q6" value="F">错误</label>
+            </fieldset>
+            <fieldset class="question"><legend>为什么把多份答案合并成一份新答案，有时能超过“从原答案中挑出最好的一份”？</legend>
+              <label class="option"><input type="radio" name="q7" value="A">A. 融合器知道隐藏的测试答案</label>
+              <label class="option"><input type="radio" name="q7" value="B">B. 融合会生成原先不存在的新答案，可能吸收多份答案的优点</label>
+              <label class="option"><input type="radio" name="q7" value="C">C. 理想选择器只是随机挑选</label>
+              <label class="option"><input type="radio" name="q7" value="D">D. 融合不需要额外调用模型</label>
+            </fieldset>
+            <fieldset class="question"><legend>判断：录像中的“平均提升 14.1%”可以直接代表 2026 年所有最新模型的预期收益。</legend>
+              <label class="option"><input type="radio" name="q8" value="T">正确</label>
+              <label class="option"><input type="radio" name="q8" value="F">错误</label>
+            </fieldset>
+          </form>
+          <div class="quiz-actions">
+            <button class="button" id="copy-answers" type="button">复制我的答案</button>
+            <button class="button secondary" id="clear-answers" type="button">重新作答</button>
+            <span id="copy-status" aria-live="polite"></span>
+          </div>
+        </section>
+
+        <section class="section" id="transcript" data-section>
+          <p class="section-kicker">视频逐字稿</p>
+          <h2>视频英文逐字稿</h2>
+          <p class="lead">内容来自视频英文字幕，并保留时间戳。字幕只做了去标签和分段；术语、公式和数字的修正以正文为准。</p>
+          <div class="transcript-toolbar">
+            <input id="transcript-search" type="search" placeholder="搜索术语，例如 verifier、power law、Archon" aria-label="搜索逐字稿">
+            <button class="button secondary" id="clear-search" type="button">清除</button>
+          </div>
+          <div class="transcript" id="transcript-list">{{TRANSCRIPT}}</div>
+        </section>
+
+        <section class="section sources" id="sources" data-section>
+          <p class="section-kicker">参考资料</p>
+          <h2>参考资料与下载</h2>
+          <ol>
+            <li><a href="https://cs329a.stanford.edu/">Stanford CS329A 官方课程页</a>，截至 2026-10-13 仍标注 Autumn 2025。</li>
+            <li><a href="https://www.youtube.com/watch?v=-Ggc37xLj_Y">Stanford Online Part 2 视频</a>，2026-08-03 发布，说明中注明 2025-09-26 授课。</li>
+            <li>Brown et al. <a href="https://arxiv.org/abs/2407.21787v3">Large Language Monkeys</a>。</li>
+            <li>Schaeffer et al. <a href="https://arxiv.org/abs/2502.17578v1">How Do Large Language Monkeys Get Their Power (Laws)?</a>。</li>
+            <li>Snell et al. <a href="https://arxiv.org/abs/2408.03314v1">Scaling LLM Test-Time Compute Optimally…</a>。</li>
+            <li>Saad-Falcon et al. <a href="https://arxiv.org/abs/2409.15254v6">Archon</a>。</li>
+            <li><a href="../data/part2-transcript.txt">清洗后的逐字稿</a> · <a href="../data/part2-transcript.json">带时间戳 JSON</a>。</li>
+          </ol>
+          <p class="footer-note">报告生成于 {{GENERATED_AT}}。投影片截图只用于学习和定位原视频；视频和论文版权归原作者。</p>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
